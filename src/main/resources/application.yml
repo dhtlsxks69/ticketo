@@ -1,0 +1,66 @@
+# ==========================================================
+# Ticketo 애플리케이션 설정 (로컬 개발 환경)
+#
+# 민감 정보(DB 계정/비밀번호)는 환경변수로 주입받고,
+# 환경변수가 없으면 ${이름:기본값} 문법의 기본값을 사용한다.
+#   예) DB_USERNAME=ticketo DB_PASSWORD=secret ./gradlew bootRun
+# ==========================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ticketo
+
+  # ----------------------------------------------------------
+  # DataSource: 로컬 MySQL(3306) 연결 정보
+  #  - serverTimezone=Asia/Seoul : DB 시간과 애플리케이션 시간 불일치 방지
+  #  - characterEncoding=UTF-8   : 한글 데이터 저장 시 깨짐 방지
+  #  - 커넥션 풀은 Spring Boot 기본값인 HikariCP를 사용
+  # ----------------------------------------------------------
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ticketo}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:1234}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # schema.sql 실행 (CREATE TABLE IF NOT EXISTS 이므로 반복 기동해도 안전)
+  sql:
+    init:
+      mode: always
+
+  # ----------------------------------------------------------
+  # JPA / Hibernate
+  #  - ddl-auto: update  : 엔티티 변경 사항을 테이블에 자동 반영 (로컬 개발 전용!
+  #                        운영에서는 validate/none + Flyway 같은 마이그레이션 도구 권장)
+  #  - open-in-view: false : 영속성 컨텍스트를 트랜잭션 범위로 한정해
+  #                          커넥션을 View 렌더링까지 붙잡지 않도록 함
+  #  - default_batch_fetch_size : 지연 로딩 컬렉션을 IN 쿼리로 묶어 N+1 문제 완화
+  # ----------------------------------------------------------
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+
+# ----------------------------------------------------------
+# MyBatis
+#  - mapper-locations : 기능별 SQL XML 위치 (resources/mapper/{feature}/*.xml)
+#  - map-underscore-to-camel-case : created_at 컬럼 -> createdAt 필드 자동 매핑
+# ----------------------------------------------------------
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+# ----------------------------------------------------------
+# 로깅: 실행되는 SQL과 바인딩 파라미터 확인용 (show_sql 대신 로거 사용)
+# ----------------------------------------------------------
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
