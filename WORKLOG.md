@@ -7,7 +7,7 @@
 
 | 날짜 | 요일 | 계획 | 실제 한 일 | 상태 | 커밋 |
 |---|---|---|---|---|---|
-| 10/8 | 목 | `.idea` 정리, claude.md 갱신, schema.sql에 ticket/reservation 추가 | `.idea`는 이미 추적 해제 상태(git ls-files .idea 결과 없음) 확인. schema.sql에 reservation 테이블 추가(ticket은 기존 테이블이 있고 TicketMapper.xml이 현재 컬럼명을 사용 중이라 유지). 앱 기동 확인은 아직 안 함 | 🔄 | |
+| 10/8 | 목 | `.idea` 정리, claude.md 갱신, schema.sql에 ticket/reservation 추가 | `.idea`는 이미 추적 해제 상태(git ls-files .idea 결과 없음) 확인. schema.sql에 reservation 테이블 추가(ticket은 기존 테이블이 있고 TicketMapper.xml이 현재 컬럼명을 사용 중이라 유지). 앱 기동 후 member/ticket/reservation 테이블 생성 확인 | ✅ | |
 | 10/9 | 금 | Ticket vo, mapper, service (등록/조회) | | ⬜ | |
 | 10/10 | 토 | Ticket controller + 수정/삭제, Postman 확인 | | ⬜ | |
 | 10/11 | 일 | Member 로그인 (BCrypt 암호화, 로그인 성공/실패) | | ⬜ | |
