@@ -24,3 +24,18 @@ CREATE TABLE IF NOT EXISTS ticket (
     KEY idx_ticket_event_at (event_at),
     CONSTRAINT chk_ticket_quantity CHECK (remaining_quantity >= 0 AND remaining_quantity <= total_quantity)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+CREATE TABLE IF NOT EXISTS reservation (
+    id          BIGINT      NOT NULL AUTO_INCREMENT,
+    member_id   BIGINT      NOT NULL,
+    ticket_id   BIGINT      NOT NULL,
+    quantity    INT         NOT NULL COMMENT '예매 수량',
+    status      VARCHAR(20) NOT NULL DEFAULT 'RESERVED' COMMENT 'RESERVED / CANCELED',
+    created_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    canceled_at DATETIME    NULL,
+    PRIMARY KEY (id),
+    KEY idx_reservation_member (member_id),
+    KEY idx_reservation_ticket (ticket_id),
+    CONSTRAINT fk_reservation_member FOREIGN KEY (member_id) REFERENCES member (id),
+    CONSTRAINT fk_reservation_ticket FOREIGN KEY (ticket_id) REFERENCES ticket (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
