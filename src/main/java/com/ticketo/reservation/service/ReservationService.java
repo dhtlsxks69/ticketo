@@ -46,4 +46,23 @@ public class ReservationService {
         ticketMapper.updateTicketRemainingQuantity(ticket.getId(), -reservation.getQuantity());
         return reservationMapper.selectReservationById(reservation.getId());
     }
+
+    /**
+     * 예매 취소: 예매 상태를 CANCELED로 바꾸고 예매했던 수량만큼 잔여 수량을 복구한다.
+     * 이미 취소된 예매는 수량을 중복 복구하지 않도록 409로 거절한다.
+     */
+    @Transactional
+    public ReservationVO cancel(Long id) {
+        ReservationVO reservation = reservationMapper.selectReservationById(id);
+        if (reservation == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "예매를 찾을 수 없습니다. id=" + id);
+        }
+
+        // RESERVED 상태일 때만 갱신되므로, 0건이면 이미 취소된 예매다.
+        if (reservationMapper.updateReservationCanceled(id) == 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 취소된 예매입니다. id=" + id);
+        }
+        ticketMapper.updateTicketRemainingQuantity(reservation.getTicketId(), reservation.getQuantity());
+        return reservationMapper.selectReservationById(id);
+    }
 }
