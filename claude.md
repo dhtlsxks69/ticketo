@@ -27,7 +27,7 @@ com.ticketo
 - 새 기능은 Member 도메인의 기존 코드 패턴을 따른다.
 
 ## Domain Rules
-- 좌석은 좌석 번호가 아니라 수량 기반(total_seats / remaining_seats)으로 관리한다.
+- 좌석은 좌석 번호가 아니라 수량 기반(total_quantity / remaining_quantity)으로 관리한다.
 - 인증은 1차에서 이메일/비밀번호 확인(BCrypt)까지만. JWT는 마지막 단계에서 추가한다.
 - 동시성 처리는 Reservation 기본 기능 완성 후 별도 단계에서 한다.
   (문제 재현 → 조건부 UPDATE → 비관적 락 순서)
