@@ -112,10 +112,10 @@ CREATE DATABASE ticketo DEFAULT CHARACTER SET utf8mb4;
 | `DB_HOST` | DB 호스트 (미지정 시 `localhost`) |
 | `DB_PORT` | DB 포트 (미지정 시 `3306`) |
 | `DB_NAME` | 데이터베이스 이름 (미지정 시 `ticketo`) |
-| `DB_USERNAME` | **직접 채워야 하는 항목** — DB 계정 |
-| `DB_PASSWORD` | **직접 채워야 하는 항목** — DB 비밀번호 |
+| `DB_USERNAME` | **필수, 직접 채워야 하는 항목** — DB 계정 |
+| `DB_PASSWORD` | **필수, 직접 채워야 하는 항목** — DB 비밀번호 |
 
-`DB_USERNAME`, `DB_PASSWORD`에는 `application.yml`에 로컬 개발용 기본값이 들어 있습니다.
+`DB_USERNAME`, `DB_PASSWORD`는 기본값이 없어서 지정하지 않으면 앱이 기동되지 않습니다.
 본인의 환경에 맞는 값을 환경변수로 지정해서 사용하세요. 실제 비밀번호는 저장소에 커밋하지 마세요.
 
 ### 4. 실행
