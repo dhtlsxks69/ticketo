@@ -15,9 +15,11 @@
   - 앱 기동 확인 (mapper XML 로딩 오류 없음). 쿼리 실행 검증은 예매 service 단계에서 진행
 - Reservation 예매 service 추가: `ReservationService.reserve` (회원/공연 존재 확인 404, 잔여 수량 부족 409, 예매 저장 후 잔여 수량 차감) (`59ad8c4`)
   - `TicketMapper`에 잔여 수량 증감 쿼리(`updateTicketRemainingQuantity`) 추가
-  - 동시성 처리 없는 기본 버전. 앱 기동 확인과 HTTP 호출 검증은 아직 안 함 (controller 단계에서 진행)
+  - 동시성 처리 없는 기본 버전. 앱 기동 확인 완료, HTTP 호출 검증은 controller 단계에서 진행
 - Reservation 예매 취소 service 추가: `ReservationService.cancel` (예매 없음 404, 이미 취소됨 409, 상태 CANCELED 변경 후 잔여 수량 복구) (`a7ca37b`)
-  - 앱 기동 확인과 HTTP 호출 검증은 아직 안 함
+  - 앱 기동 확인 완료, HTTP 호출 검증은 controller 단계에서 진행
+- Reservation 내 예매 내역 조회 service 추가: `ReservationService.getReservationList` (회원 없음 404, 최신순, 취소된 예매 포함) (`5adf394`)
+  - bootRun으로 앱 기동 확인 완료. HTTP 호출 검증은 controller 단계에서 진행
 
 ## 10/8 (목)
 
