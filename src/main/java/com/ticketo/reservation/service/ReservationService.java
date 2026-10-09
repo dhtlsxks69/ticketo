@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -19,6 +21,14 @@ public class ReservationService {
     private final ReservationMapper reservationMapper;
     private final TicketMapper ticketMapper;
     private final MemberMapper memberMapper;
+
+    /** 회원의 예매 내역을 최신순으로 조회한다. 취소된 예매도 포함한다. */
+    public List<ReservationVO> getReservationList(Long memberId) {
+        if (memberMapper.selectMemberById(memberId) == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다. id=" + memberId);
+        }
+        return reservationMapper.selectReservationListByMemberId(memberId);
+    }
 
     /**
      * 예매: 회원/공연 존재와 잔여 수량을 확인한 뒤 예매를 저장하고 잔여 수량을 차감한다.
