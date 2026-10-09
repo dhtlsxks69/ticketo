@@ -13,6 +13,9 @@
 - `application.yml`의 DB 계정/비밀번호 기본값 제거, README 설명 수정 (`b330b54`)
 - Reservation vo, mapper 추가: `ReservationVO`, `ReservationMapper`(조회/목록/등록/취소 처리) + XML (`a92e478`)
   - 앱 기동 확인 (mapper XML 로딩 오류 없음). 쿼리 실행 검증은 예매 service 단계에서 진행
+- Reservation 예매 service 추가: `ReservationService.reserve` (회원/공연 존재 확인 404, 잔여 수량 부족 409, 예매 저장 후 잔여 수량 차감) (`59ad8c4`)
+  - `TicketMapper`에 잔여 수량 증감 쿼리(`updateTicketRemainingQuantity`) 추가
+  - 동시성 처리 없는 기본 버전. 앱 기동 확인과 HTTP 호출 검증은 아직 안 함 (controller 단계에서 진행)
 
 ## 10/8 (목)
 
