@@ -19,6 +19,13 @@
         WHERE id = #{id}
     </select>
 
+    <!-- 로그인 검증 전용: password(BCrypt 해시)를 포함해 조회 -->
+    <select id="selectMemberForLoginByEmail" resultType="com.ticketo.member.vo.MemberVO">
+        SELECT id, email, password, name, created_at
+        FROM member
+        WHERE email = #{email}
+    </select>
+
     <select id="existsByEmail" resultType="boolean">
         SELECT EXISTS(SELECT 1 FROM member WHERE email = #{email})
     </select>

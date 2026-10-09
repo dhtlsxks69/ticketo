@@ -1,6 +1,7 @@
 package com.ticketo.member.controller;
 
 import com.ticketo.member.service.MemberService;
+import com.ticketo.member.vo.MemberLoginVO;
 import com.ticketo.member.vo.MemberVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,5 +33,11 @@ public class MemberController {
     @ResponseStatus(HttpStatus.CREATED)
     public MemberVO register(@Valid @RequestBody MemberVO member) {
         return memberService.register(member);
+    }
+
+    /** 로그인 (이메일/비밀번호 확인). 성공 시 비밀번호를 제외한 회원 정보를 반환한다. */
+    @PostMapping("/login")
+    public MemberVO login(@Valid @RequestBody MemberLoginVO request) {
+        return memberService.login(request);
     }
 }
