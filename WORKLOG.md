@@ -11,6 +11,8 @@
   - Postman으로 성공/실패 응답 확인
 - README.md 작성 (`1a7e453`)
 - `application.yml`의 DB 계정/비밀번호 기본값 제거, README 설명 수정 (`b330b54`)
+- Reservation vo, mapper 추가: `ReservationVO`, `ReservationMapper`(조회/목록/등록/취소 처리) + XML (`a92e478`)
+  - 앱 기동 확인 (mapper XML 로딩 오류 없음). 쿼리 실행 검증은 예매 service 단계에서 진행
 
 ## 10/8 (목)
 
