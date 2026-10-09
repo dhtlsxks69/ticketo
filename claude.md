@@ -23,7 +23,7 @@ com.ticketo
     └── vo              # {Feature}VO.java
 ```
 
-- MyBatis XML: `src/main/resources/mapper/{Feature}Mapper.xml`
+- MyBatis XML: `src/main/resources/mapper/{feature}/{Feature}Mapper.xml`
 - 새 기능은 Member 도메인의 기존 코드 패턴을 따른다.
 
 ## Domain Rules
