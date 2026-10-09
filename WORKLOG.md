@@ -16,6 +16,8 @@
 - Reservation 예매 service 추가: `ReservationService.reserve` (회원/공연 존재 확인 404, 잔여 수량 부족 409, 예매 저장 후 잔여 수량 차감) (`59ad8c4`)
   - `TicketMapper`에 잔여 수량 증감 쿼리(`updateTicketRemainingQuantity`) 추가
   - 동시성 처리 없는 기본 버전. 앱 기동 확인과 HTTP 호출 검증은 아직 안 함 (controller 단계에서 진행)
+- Reservation 예매 취소 service 추가: `ReservationService.cancel` (예매 없음 404, 이미 취소됨 409, 상태 CANCELED 변경 후 잔여 수량 복구) (`a7ca37b`)
+  - 앱 기동 확인과 HTTP 호출 검증은 아직 안 함
 
 ## 10/8 (목)
 
