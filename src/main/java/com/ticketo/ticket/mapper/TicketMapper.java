@@ -26,4 +26,10 @@ public interface TicketMapper {
     int updateTicket(TicketVO ticket);
 
     int deleteTicket(@Param("id") Long id);
+
+    /**
+     * 잔여 수량 증감. 예매는 음수, 취소 복구는 양수를 넘긴다.
+     * 잔여 수량 부족 여부는 확인하지 않는다. (동시성 처리 단계에서 조건부 UPDATE로 보강 예정)
+     */
+    int updateTicketRemainingQuantity(@Param("id") Long id, @Param("delta") int delta);
 }

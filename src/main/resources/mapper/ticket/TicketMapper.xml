@@ -36,6 +36,12 @@
           AND remaining_quantity + (#{totalQuantity} - total_quantity) >= 0
     </update>
 
+    <update id="updateTicketRemainingQuantity">
+        UPDATE ticket
+        SET remaining_quantity = remaining_quantity + #{delta}
+        WHERE id = #{id}
+    </update>
+
     <delete id="deleteTicket">
         DELETE FROM ticket WHERE id = #{id}
     </delete>
