@@ -58,6 +58,34 @@ public class ReservationService {
     }
 
     /**
+     * 예매(비관적 락 버전): ticket 행을 {@code SELECT ... FOR UPDATE}로 먼저 잠근 뒤 잔여 수량을 확인하고 차감한다.
+     * 락을 쥔 동안 다른 요청은 같은 공연을 조회조차 못 하고 대기하므로 확인과 차감 사이에 끼어들 수 없다.
+     * 조건부 UPDATE 버전({@link #reserve})과의 비교용이며, 컨트롤러는 아직 {@code reserve}를 사용한다.
+     */
+    @Transactional
+    public ReservationVO reserveWithPessimisticLock(ReservationVO reservation) {
+        if (memberMapper.selectMemberById(reservation.getMemberId()) == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "회원을 찾을 수 없습니다. id=" + reservation.getMemberId());
+        }
+
+        TicketVO ticket = ticketMapper.selectTicketByIdForUpdate(reservation.getTicketId());
+        if (ticket == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "공연을 찾을 수 없습니다. id=" + reservation.getTicketId());
+        }
+        if (ticket.getRemainingQuantity() < reservation.getQuantity()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "잔여 수량이 부족합니다. 잔여=" + ticket.getRemainingQuantity()
+                            + ", 요청=" + reservation.getQuantity());
+        }
+
+        ticketMapper.updateTicketRemainingQuantity(ticket.getId(), -reservation.getQuantity());
+        reservationMapper.insertReservation(reservation);
+        return reservationMapper.selectReservationById(reservation.getId());
+    }
+
+    /**
      * 예매 취소: 예매 상태를 CANCELED로 바꾸고 예매했던 수량만큼 잔여 수량을 복구한다.
      * 이미 취소된 예매는 수량을 중복 복구하지 않도록 409로 거절한다.
      */

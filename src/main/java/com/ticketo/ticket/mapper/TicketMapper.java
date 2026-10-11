@@ -16,6 +16,9 @@ public interface TicketMapper {
 
     TicketVO selectTicketById(@Param("id") Long id);
 
+    /** 비관적 락 조회({@code SELECT ... FOR UPDATE}). 트랜잭션이 끝날 때까지 해당 행을 다른 트랜잭션이 잠글 수 없다. */
+    TicketVO selectTicketByIdForUpdate(@Param("id") Long id);
+
     /** INSERT 후 생성된 PK가 {@code ticket.id}에 채워진다. 잔여 수량은 총 수량으로 초기화된다. */
     int insertTicket(TicketVO ticket);
 

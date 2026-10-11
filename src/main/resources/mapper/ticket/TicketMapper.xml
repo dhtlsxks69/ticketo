@@ -18,6 +18,13 @@
         WHERE id = #{id}
     </select>
 
+    <select id="selectTicketByIdForUpdate" resultType="com.ticketo.ticket.vo.TicketVO">
+        SELECT <include refid="ticketColumns"/>
+        FROM ticket
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
     <insert id="insertTicket" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO ticket (title, venue, event_at, price, total_quantity, remaining_quantity)
         VALUES (#{title}, #{venue}, #{eventAt}, #{price}, #{totalQuantity}, #{totalQuantity})
