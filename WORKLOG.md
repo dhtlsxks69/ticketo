@@ -35,9 +35,14 @@
 - 조건부 UPDATE로 동시성 해결: `TicketMapper.decreaseTicketRemainingQuantity`(`WHERE remaining_quantity >= #{quantity}`) 추가, `reserve`에서 reservation INSERT보다 먼저 실행하고 0건이면 409 (`7e7f32c`)
   - 같은 테스트 3회 재실행: 성공 10 / 매진(409) 90 / 데드락 0 (수정 전: 성공 10 / 409 81 / 데드락 8~9)
   - 배타 락을 먼저 잡아 FK 공유 락과의 교착 경로가 사라진 것으로 판단 (InnoDB 락 로그로 직접 확인하지는 않음)
-  - 취소(`cancel`)의 락 순서는 아직 점검하지 않음
+  - 취소(`cancel`) 락 순서 점검: reservation → ticket 순으로 예매와 반대지만, 예매가 INSERT하는 새 행은 커밋 전이라 취소가 볼 수 없어 교착 사이클이 없다고 판단 (코드 분석만, 실행 검증은 하지 않음)
 - 공통 예외 처리 추가: `GlobalExceptionHandler`가 `PessimisticLockingFailureException`(데드락 등)을 500 대신 503으로 응답 (`bf1b3a6`)
   - 데드락이 더 이상 재현되지 않아 이 핸들러를 타는 실제 요청은 검증하지 못함. 앱 컨텍스트 로딩만 확인
+- 비관적 락 예매 추가 및 비교: `TicketMapper.selectTicketByIdForUpdate`(`SELECT ... FOR UPDATE`), `ReservationService.reserveWithPessimisticLock` (비교용, 컨트롤러는 조건부 UPDATE 버전 사용) (`4c40f91`)
+  - `ReservationConcurrencyTest`를 두 방식 비교용으로 확장 (잔여 10매/100매, 스레드 100개, 소요 시간 출력)
+  - 3회 결과: 두 방식 모두 초과 판매·불일치·오류 0. 잔여 10매 조건부 UPDATE 63~69ms / 비관적 락 53~59ms, 잔여 100매 257~300ms / 259~283ms로 오차 범위
+  - 한계: 로컬 DB 하나, 단일 공연, 테스트 실행 순서 고정(조건부 UPDATE가 항상 먼저)
+- README 동시성 섹션에 재현 → 조건부 UPDATE → 비관적 락 비교 표 정리, 구현 현황 갱신 (`08c40ca`)
 
 ## 10/8 (목)
 
