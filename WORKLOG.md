@@ -51,11 +51,11 @@
   - 검증: 토큰 없음/위조/만료/Bearer 아님 401, 유효 토큰 통과, 로그인 토큰 발급, 본인/타인 조회·수정(200/403), 위조 memberId 무시, 타인 예매 취소 404 후 수량 유지, 본인 취소 200·중복 취소 409. 동시성 테스트도 그대로 통과
   - 한계: 관리자 역할이 없어 공연 쓰기와 회원 목록은 로그인한 누구나 가능. 리프레시 토큰, 로그아웃(토큰 폐기) 없음. 응답 헤더/CORS 설정 없음
   - 검증용 데이터: 회원 `update-test@example.com`(id=16), `jwt-other@example.com`이 DB에 남음
-- 정리 작업 (커밋 전)
-  - `.gitignore` 끝의 깨진 줄(`.DS_Store` 뒤 UTF-16 `.idea/`, NUL 바이트 포함)을 제거하고 UTF-8로 `.DS_Store`, `.idea/`를 각각 새 줄로 추가. UTF-8/NUL 없음 확인. `git check-ignore -v .idea/workspace.xml`은 수정 전 `.idea/.gitignore:3:/workspace.xml`, 수정 후 `.gitignore:44:.idea/`에 매칭되고 `git status`의 `?? .idea/` 표시도 사라짐
-  - 회원 목록 API(`GET /api/members`) 삭제: 컨트롤러 → `MemberService.getMemberList` → `MemberMapper.selectMemberList` → XML 쿼리 순으로 다른 사용처가 없는 것을 확인하고 제거, 미사용 `List` import 정리. 모든 회원의 이메일이 로그인한 누구에게나 보이던 문제 해소
-  - README: 환경변수 표 밖으로 떨어진 `JWT_SECRET` 행을 표 안으로 이동, 패키지 구조에 `SecurityConfig`·`JwtTokenProvider`·`JwtAuthenticationFilter`·`JsonAuthErrorHandler` 추가, 회원 목록 API 삭제를 API 표/구현 현황/인증 섹션에 반영
-  - `compileJava` 통과만 확인. 앱 기동과 테스트는 IntelliJ에서 직접 확인 예정
+- 정리 작업
+  - `.gitignore` 끝의 깨진 줄(`.DS_Store` 뒤 UTF-16 `.idea/`, NUL 바이트 포함)을 제거하고 UTF-8로 `.DS_Store`, `.idea/`를 각각 새 줄로 추가. UTF-8/NUL 없음 확인. `git check-ignore -v .idea/workspace.xml`은 수정 전 `.idea/.gitignore:3:/workspace.xml`, 수정 후 `.gitignore:44:.idea/`에 매칭되고 `git status`의 `?? .idea/` 표시도 사라짐 (`babafeb`)
+  - 회원 목록 API(`GET /api/members`) 삭제: 컨트롤러 → `MemberService.getMemberList` → `MemberMapper.selectMemberList` → XML 쿼리 순으로 다른 사용처가 없는 것을 확인하고 제거, 미사용 `List` import 정리. 모든 회원의 이메일이 로그인한 누구에게나 보이던 문제 해소 (`ea530d1`)
+  - README: 환경변수 표 밖으로 떨어진 `JWT_SECRET` 행을 표 안으로 이동, 패키지 구조에 `SecurityConfig`·`JwtTokenProvider`·`JwtAuthenticationFilter`·`JsonAuthErrorHandler` 추가, 회원 목록 API 삭제를 API 표/구현 현황/인증 섹션에 반영 (`db4a8a1`)
+  - IntelliJ에서 앱 기동, 로그인, 예매 확인 완료
 
 ## 10/9 (금)
 
