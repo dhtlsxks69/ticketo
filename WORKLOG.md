@@ -43,6 +43,12 @@
   - 3회 결과: 두 방식 모두 초과 판매·불일치·오류 0. 잔여 10매 조건부 UPDATE 63~69ms / 비관적 락 53~59ms, 잔여 100매 257~300ms / 259~283ms로 오차 범위
   - 한계: 로컬 DB 하나, 단일 공연, 테스트 실행 순서 고정(조건부 UPDATE가 항상 먼저)
 - README 동시성 섹션에 재현 → 조건부 UPDATE → 비관적 락 비교 표 정리, 구현 현황 갱신 (`08c40ca`)
+- 공통 예외 처리 확장: `ErrorResponse` 추가, `GlobalExceptionHandler`가 `ResponseEntityExceptionHandler`를 상속해 모든 오류를 같은 JSON 형식으로 응답 (`cc4efb1`)
+  - `ResponseStatusException` 사유를 `message`로 노출, `@Valid` 실패는 `fieldErrors` 포함, 깨진 JSON/파라미터 누락/타입 오류는 한글 메시지, 예상 못한 예외는 500 + 일반 메시지(내부 정보 미노출, 로그만)
+  - bootRun 후 curl로 400(검증/JSON/타입/파라미터)·401·404·405·409·415·500 응답 확인
+  - 첫 구현에서 `ResponseStatusException` 사유가 "Not Found"로 덮어써지고 경로 변수 오류가 영어로 나와 `handleErrorResponseException`, `handleTypeMismatch`를 오버라이드해 수정
+  - 503(락 충돌) 경로는 데드락이 재현되지 않아 이번에도 실제 요청으로 검증하지 못함
+  - 부수 확인: FK가 걸린 공연 삭제(`DELETE /api/tickets/{id}`)는 500으로 응답. 409로 바꾸는 것은 별도 작업 후보
 
 ## 10/8 (목)
 
