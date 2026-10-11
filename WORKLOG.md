@@ -20,6 +20,10 @@
   - 앱 기동 확인 완료, HTTP 호출 검증은 controller 단계에서 진행
 - Reservation 내 예매 내역 조회 service 추가: `ReservationService.getReservationList` (회원 없음 404, 최신순, 취소된 예매 포함) (`5adf394`)
   - bootRun으로 앱 기동 확인 완료. HTTP 호출 검증은 controller 단계에서 진행
+- Reservation controller 추가: `POST /api/reservations`, `DELETE /api/reservations/{id}`(취소, CANCELED 예매 반환), `GET /api/reservations?memberId=` (`3337127`)
+  - curl로 HTTP 검증 완료: 예매 201·잔여 차감, 수량 초과 409, 없는 회원/공연 404, quantity 0·memberId 누락 400, 취소 시 잔여 복구, 중복 취소 409, 없는 예매 404
+  - `ReservationMapper.java`에 섞여 있던 오타 문자 제거
+  - Windows 셸에서 한글 JSON을 curl로 보내면 400이 나서 ASCII 값으로 검증 (Postman 등에서는 확인 필요)
 
 ## 10/8 (목)
 
