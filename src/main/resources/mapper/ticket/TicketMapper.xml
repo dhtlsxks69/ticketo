@@ -42,6 +42,13 @@
         WHERE id = #{id}
     </update>
 
+    <update id="decreaseTicketRemainingQuantity">
+        UPDATE ticket
+        SET remaining_quantity = remaining_quantity - #{quantity}
+        WHERE id = #{id}
+          AND remaining_quantity >= #{quantity}
+    </update>
+
     <delete id="deleteTicket">
         DELETE FROM ticket WHERE id = #{id}
     </delete>

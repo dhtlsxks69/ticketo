@@ -31,8 +31,9 @@ public class ReservationService {
     }
 
     /**
-     * 예매: 회원/공연 존재와 잔여 수량을 확인한 뒤 예매를 저장하고 잔여 수량을 차감한다.
-     * 동시성 처리는 하지 않은 기본 버전이다. (조회 후 차감 사이에 다른 요청이 끼어들 수 있음)
+     * 예매: 회원/공연 존재를 확인한 뒤 잔여 수량을 조건부 UPDATE로 먼저 차감하고, 성공하면 예매를 저장한다.
+     * 차감을 INSERT보다 먼저 실행해 ticket 행의 배타 락을 먼저 잡으므로,
+     * INSERT의 FK 공유 락과 이후 UPDATE의 배타 락이 엇갈려 생기던 데드락을 피한다.
      */
     @Transactional
     public ReservationVO reserve(ReservationVO reservation) {
@@ -46,14 +47,13 @@ public class ReservationService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,
                     "공연을 찾을 수 없습니다. id=" + reservation.getTicketId());
         }
-        if (ticket.getRemainingQuantity() < reservation.getQuantity()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "잔여 수량이 부족합니다. 잔여=" + ticket.getRemainingQuantity()
-                            + ", 요청=" + reservation.getQuantity());
-        }
 
+        // 잔여 수량이 충분할 때만 갱신되므로, 0건이면 매진(수량 부족)이다.
+        if (ticketMapper.decreaseTicketRemainingQuantity(ticket.getId(), reservation.getQuantity()) == 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "잔여 수량이 부족합니다. 요청=" + reservation.getQuantity());
+        }
         reservationMapper.insertReservation(reservation);
-        ticketMapper.updateTicketRemainingQuantity(ticket.getId(), -reservation.getQuantity());
         return reservationMapper.selectReservationById(reservation.getId());
     }
 

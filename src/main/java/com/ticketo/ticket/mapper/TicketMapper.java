@@ -28,8 +28,14 @@ public interface TicketMapper {
     int deleteTicket(@Param("id") Long id);
 
     /**
-     * 잔여 수량 증감. 예매는 음수, 취소 복구는 양수를 넘긴다.
-     * 잔여 수량 부족 여부는 확인하지 않는다. (동시성 처리 단계에서 조건부 UPDATE로 보강 예정)
+     * 잔여 수량 증감. 취소 복구처럼 수량을 되돌릴 때 양수를 넘긴다.
+     * 잔여 수량 부족 여부는 확인하지 않으므로 차감에는 {@link #decreaseTicketRemainingQuantity}를 사용한다.
      */
     int updateTicketRemainingQuantity(@Param("id") Long id, @Param("delta") int delta);
+
+    /**
+     * 조건부 차감. 잔여 수량이 요청 수량 이상일 때만 차감하며, 부족하거나 없는 id이면 0건이 갱신된다.
+     * 조회와 차감이 한 SQL로 처리되므로 동시 요청에도 잔여 수량이 음수가 되지 않는다.
+     */
+    int decreaseTicketRemainingQuantity(@Param("id") Long id, @Param("quantity") int quantity);
 }
