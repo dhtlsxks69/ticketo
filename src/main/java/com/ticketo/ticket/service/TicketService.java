@@ -3,6 +3,7 @@ package com.ticketo.ticket.service;
 import com.ticketo.ticket.mapper.TicketMapper;
 import com.ticketo.ticket.vo.TicketVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,9 +49,19 @@ public class TicketService {
         return getTicket(id);
     }
 
+    /**
+     * 공연 삭제. 예매 내역(취소된 예매 포함)이 있는 공연은 reservation FK 때문에 삭제할 수 없으므로 409로 응답한다.
+     * 사전 조회 대신 DB 제약에 맡기면 확인과 삭제 사이에 예매가 들어와도 안전하다.
+     */
     @Transactional
     public void deleteTicket(Long id) {
-        if (ticketMapper.deleteTicket(id) == 0) {
+        int deleted;
+        try {
+            deleted = ticketMapper.deleteTicket(id);
+        } catch (DataIntegrityViolationException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "예매 내역이 있는 공연은 삭제할 수 없습니다. id=" + id);
+        }
+        if (deleted == 0) {
             throw notFound(id);
         }
     }
