@@ -24,6 +24,9 @@
   - curl로 HTTP 검증 완료: 예매 201·잔여 차감, 수량 초과 409, 없는 회원/공연 404, quantity 0·memberId 누락 400, 취소 시 잔여 복구, 중복 취소 409, 없는 예매 404
   - `ReservationMapper.java`에 섞여 있던 오타 문자 제거
   - Windows 셸에서 한글 JSON을 curl로 보내면 400이 나서 ASCII 값으로 검증 (Postman 등에서는 확인 필요)
+- `schema.sql`의 reservation에 `chk_reservation_status` CHECK 제약 추가 (`status IN ('RESERVED','CANCELED')`)
+  - `CREATE TABLE IF NOT EXISTS`라 기존 DB에는 ALTER로 직접 적용 후 재기동, 예매 API 정상 동작 확인
+- README에 Reservation API/패키지 구조/구현 현황 반영
 
 ## 10/8 (목)
 
