@@ -27,6 +27,11 @@
 - `schema.sql`의 reservation에 `chk_reservation_status` CHECK 제약 추가 (`status IN ('RESERVED','CANCELED')`)
   - `CREATE TABLE IF NOT EXISTS`라 기존 DB에는 ALTER로 직접 적용 후 재기동, 예매 API 정상 동작 확인
 - README에 Reservation API/패키지 구조/구현 현황 반영
+- 동시성 문제 재현 테스트 추가: `ReservationConcurrencyTest` (잔여 10매, 스레드 100개가 1매씩 동시 예매)
+  - 3회 실행 결과: 초과 판매·수량 불일치는 발생하지 않았고 성공 10건, 매진(409) 81건 고정
+  - 대신 나머지 8~9건이 `DeadlockLoserDataAccessException`(500)으로 실패. reservation INSERT의 FK 공유 락 때문에 `UPDATE ticket`의 배타 락과 교착이 발생하는 것으로 추정
+  - `ticket`의 `chk_ticket_quantity` CHECK 제약이 음수 재고를 막고 있어 순수한 초과 판매는 가려진 상태 (첫 실행에서 `UncategorizedSQLException` 1건은 원인 미확인)
+  - 다음 단계: 조건부 UPDATE로 해결 후 같은 테스트로 비교
 
 ## 10/8 (목)
 
