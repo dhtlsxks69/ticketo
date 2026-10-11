@@ -42,6 +42,15 @@
 - 공연 삭제 409 처리: 예매 내역(취소된 예매 포함)이 있는 공연을 삭제하면 FK 위반으로 500이 나던 것을 `TicketService.deleteTicket`에서 `DataIntegrityViolationException`을 잡아 409로 변환 (`7d2743f`)
   - 사전 조회 대신 DB 제약에 맡겨 확인과 삭제 사이에 예매가 들어오는 경우에도 안전하게 처리. mapper 변경 없음
   - curl로 검증: 예매 있는 공연 409, 전부 취소된 공연도 409, 예매 없는 공연 204 후 조회 404, 없는 공연 404, 409 후 공연 데이터 유지
+- JWT 인증 추가 (Spring Security + jjwt 0.12.6, HS256 액세스 토큰, STATELESS) (인프라 `3919a19`, Member `1f884b3`, Reservation `9ba2943`)
+  - 인프라: `JwtTokenProvider`, `JwtAuthenticationFilter`, `SecurityConfig`, 401/403을 `ErrorResponse` JSON으로 응답하는 `JsonAuthErrorHandler`. 기본 사용자/임시 비밀번호 자동 구성은 제외
+  - 비밀키는 환경변수 `JWT_SECRET`(기본값 없음, 32자 이상). 없거나 짧으면 기동 실패를 확인. 테스트는 `build.gradle.kts`에서 테스트 전용 값 주입. `application.yml`은 수정하지 않음
+  - 로그인 응답이 `{accessToken, tokenType, expiresIn, member}`로 변경 (기존 클라이언트는 `member` 아래에서 읽어야 함)
+  - 공개: 회원가입/로그인/공연 조회. 그 외 로그인 필요. 회원 단건 조회·수정은 본인만(403, 존재 여부 비노출을 위해 소유자 검사를 먼저 수행), 예매 취소는 본인 예매만(남의 예매는 404)
+  - 예매의 `memberId`는 토큰에서 가져오고 요청 값은 무시. `GET /api/reservations`의 `memberId` 파라미터 제거
+  - 검증: 토큰 없음/위조/만료/Bearer 아님 401, 유효 토큰 통과, 로그인 토큰 발급, 본인/타인 조회·수정(200/403), 위조 memberId 무시, 타인 예매 취소 404 후 수량 유지, 본인 취소 200·중복 취소 409. 동시성 테스트도 그대로 통과
+  - 한계: 관리자 역할이 없어 공연 쓰기와 회원 목록은 로그인한 누구나 가능. 리프레시 토큰, 로그아웃(토큰 폐기) 없음. 응답 헤더/CORS 설정 없음
+  - 검증용 데이터: 회원 `update-test@example.com`(id=16), `jwt-other@example.com`이 DB에 남음
 
 ## 10/9 (금)
 
