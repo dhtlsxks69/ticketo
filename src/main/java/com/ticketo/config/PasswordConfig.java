@@ -6,7 +6,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * 비밀번호 해시 설정. Spring Security 전체를 쓰지 않고 암호화 모듈(spring-security-crypto)만 사용한다.
+ * 비밀번호 해시 설정. BCrypt로 해시하고 로그인 시 matches로 검증한다. (인증 필터 설정은 {@link SecurityConfig})
  */
 @Configuration
 public class PasswordConfig {

@@ -42,8 +42,12 @@ dependencies {
     // Validation: @Valid, @NotBlank 등 Bean Validation(Hibernate Validator)
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
-    // 비밀번호 BCrypt 해시용 (Spring Security 전체가 아닌 crypto 모듈만 사용)
-    implementation("org.springframework.security:spring-security-crypto")
+    // Security: 인증 필터 체인 + BCrypt 해시(spring-security-crypto 포함)
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    // JWT 발급/검증 (jjwt). api만 컴파일에 필요하고 구현체는 런타임에만 필요하다.
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
     // Lombok: 컴파일 시점에 Getter/생성자 등 보일러플레이트 코드 생성
     compileOnly("org.projectlombok:lombok")
@@ -61,6 +65,8 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // JWT_SECRET은 운영에서 환경변수로 받는다. 테스트에서는 컨텍스트가 뜨도록 테스트 전용 값을 준다.
+    environment("JWT_SECRET", "test-only-secret-key-for-ticketo-tests-0123456789")
 }
 
 tasks.withType<JavaCompile> {

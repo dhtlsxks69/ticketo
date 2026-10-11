@@ -2,6 +2,7 @@ package com.ticketo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 
 /**
  * Ticketo 애플리케이션의 진입점(Entry Point).
@@ -15,7 +16,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * <p>따라서 모든 클래스는 반드시 {@code com.ticketo} 하위 패키지에 위치해야 빈으로 등록된다.</p>
  */
-@SpringBootApplication
+// 로그인은 직접 구현(BCrypt 비교 + JWT)하므로, Spring Security가 만드는 기본 사용자/임시 비밀번호는 쓰지 않는다.
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 public class TicketoApplication {
 
     /**
