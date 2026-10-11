@@ -32,6 +32,12 @@
   - 대신 나머지 8~9건이 `DeadlockLoserDataAccessException`(500)으로 실패. reservation INSERT의 FK 공유 락 때문에 `UPDATE ticket`의 배타 락과 교착이 발생하는 것으로 추정
   - `ticket`의 `chk_ticket_quantity` CHECK 제약이 음수 재고를 막고 있어 순수한 초과 판매는 가려진 상태 (첫 실행에서 `UncategorizedSQLException` 1건은 원인 미확인)
   - 다음 단계: 조건부 UPDATE로 해결 후 같은 테스트로 비교
+- 조건부 UPDATE로 동시성 해결: `TicketMapper.decreaseTicketRemainingQuantity`(`WHERE remaining_quantity >= #{quantity}`) 추가, `reserve`에서 reservation INSERT보다 먼저 실행하고 0건이면 409 (`7e7f32c`)
+  - 같은 테스트 3회 재실행: 성공 10 / 매진(409) 90 / 데드락 0 (수정 전: 성공 10 / 409 81 / 데드락 8~9)
+  - 배타 락을 먼저 잡아 FK 공유 락과의 교착 경로가 사라진 것으로 판단 (InnoDB 락 로그로 직접 확인하지는 않음)
+  - 취소(`cancel`)의 락 순서는 아직 점검하지 않음
+- 공통 예외 처리 추가: `GlobalExceptionHandler`가 `PessimisticLockingFailureException`(데드락 등)을 500 대신 503으로 응답 (`bf1b3a6`)
+  - 데드락이 더 이상 재현되지 않아 이 핸들러를 타는 실제 요청은 검증하지 못함. 앱 컨텍스트 로딩만 확인
 
 ## 10/8 (목)
 
