@@ -3,23 +3,8 @@
 그날 실제로 한 일을 날짜별로 기록합니다. 앞으로의 일정은 `ticketo-plan.md`를 참고합니다.
 작업 종료 시 해당 날짜에 한 일과 커밋을 추가합니다.
 
-## 10/9 (금)
+## 10/11 (일)
 
-- Ticket 등록/목록/상세/수정/삭제 API 구현 (`79524dd`)
-- `ticketo-plan.md` 컬럼명·API 경로, `claude.md` XML 경로를 실제 코드 기준으로 정리 (`a7c93b8`)
-- Member 로그인 API 구현: `POST /api/members/login` (BCrypt matches, 이메일 정규화, 401 통일 메시지) (`12ef5e3`)
-  - Postman으로 성공/실패 응답 확인
-- README.md 작성 (`1a7e453`)
-- `application.yml`의 DB 계정/비밀번호 기본값 제거, README 설명 수정 (`b330b54`)
-- Reservation vo, mapper 추가: `ReservationVO`, `ReservationMapper`(조회/목록/등록/취소 처리) + XML (`a92e478`)
-  - 앱 기동 확인 (mapper XML 로딩 오류 없음). 쿼리 실행 검증은 예매 service 단계에서 진행
-- Reservation 예매 service 추가: `ReservationService.reserve` (회원/공연 존재 확인 404, 잔여 수량 부족 409, 예매 저장 후 잔여 수량 차감) (`59ad8c4`)
-  - `TicketMapper`에 잔여 수량 증감 쿼리(`updateTicketRemainingQuantity`) 추가
-  - 동시성 처리 없는 기본 버전. 앱 기동 확인 완료, HTTP 호출 검증은 controller 단계에서 진행
-- Reservation 예매 취소 service 추가: `ReservationService.cancel` (예매 없음 404, 이미 취소됨 409, 상태 CANCELED 변경 후 잔여 수량 복구) (`a7ca37b`)
-  - 앱 기동 확인 완료, HTTP 호출 검증은 controller 단계에서 진행
-- Reservation 내 예매 내역 조회 service 추가: `ReservationService.getReservationList` (회원 없음 404, 최신순, 취소된 예매 포함) (`5adf394`)
-  - bootRun으로 앱 기동 확인 완료. HTTP 호출 검증은 controller 단계에서 진행
 - Reservation controller 추가: `POST /api/reservations`, `DELETE /api/reservations/{id}`(취소, CANCELED 예매 반환), `GET /api/reservations?memberId=` (`3337127`)
   - curl로 HTTP 검증 완료: 예매 201·잔여 차감, 수량 초과 409, 없는 회원/공연 404, quantity 0·memberId 누락 400, 취소 시 잔여 복구, 중복 취소 409, 없는 예매 404
   - `ReservationMapper.java`에 섞여 있던 오타 문자 제거
@@ -49,6 +34,24 @@
   - 첫 구현에서 `ResponseStatusException` 사유가 "Not Found"로 덮어써지고 경로 변수 오류가 영어로 나와 `handleErrorResponseException`, `handleTypeMismatch`를 오버라이드해 수정
   - 503(락 충돌) 경로는 데드락이 재현되지 않아 이번에도 실제 요청으로 검증하지 못함
   - 부수 확인: FK가 걸린 공연 삭제(`DELETE /api/tickets/{id}`)는 500으로 응답. 409로 바꾸는 것은 별도 작업 후보
+
+## 10/9 (금)
+
+- Ticket 등록/목록/상세/수정/삭제 API 구현 (`79524dd`)
+- `ticketo-plan.md` 컬럼명·API 경로, `claude.md` XML 경로를 실제 코드 기준으로 정리 (`a7c93b8`)
+- Member 로그인 API 구현: `POST /api/members/login` (BCrypt matches, 이메일 정규화, 401 통일 메시지) (`12ef5e3`)
+  - Postman으로 성공/실패 응답 확인
+- README.md 작성 (`1a7e453`)
+- `application.yml`의 DB 계정/비밀번호 기본값 제거, README 설명 수정 (`b330b54`)
+- Reservation vo, mapper 추가: `ReservationVO`, `ReservationMapper`(조회/목록/등록/취소 처리) + XML (`a92e478`)
+  - 앱 기동 확인 (mapper XML 로딩 오류 없음). 쿼리 실행 검증은 예매 service 단계에서 진행
+- Reservation 예매 service 추가: `ReservationService.reserve` (회원/공연 존재 확인 404, 잔여 수량 부족 409, 예매 저장 후 잔여 수량 차감) (`59ad8c4`)
+  - `TicketMapper`에 잔여 수량 증감 쿼리(`updateTicketRemainingQuantity`) 추가
+  - 동시성 처리 없는 기본 버전. 앱 기동 확인 완료, HTTP 호출 검증은 controller 단계에서 진행
+- Reservation 예매 취소 service 추가: `ReservationService.cancel` (예매 없음 404, 이미 취소됨 409, 상태 CANCELED 변경 후 잔여 수량 복구) (`a7ca37b`)
+  - 앱 기동 확인 완료, HTTP 호출 검증은 controller 단계에서 진행
+- Reservation 내 예매 내역 조회 service 추가: `ReservationService.getReservationList` (회원 없음 404, 최신순, 취소된 예매 포함) (`5adf394`)
+  - bootRun으로 앱 기동 확인 완료. HTTP 호출 검증은 controller 단계에서 진행
 
 ## 10/8 (목)
 
