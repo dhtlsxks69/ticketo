@@ -22,7 +22,6 @@
 
 - [x] 회원가입 (이메일 정규화, 중복 검사, BCrypt 해시 저장)
 - [x] 로그인 (이메일/비밀번호 확인, 실패 시 401 통일 메시지)
-- [x] 회원 목록 조회
 - [x] 공연 등록 / 목록 / 상세 / 수정 / 삭제
 - [x] 수량 기반 잔여 좌석 관리 (`total_quantity` / `remaining_quantity`)
 - [x] 회원 단건 조회 / 수정 (이름만 수정 가능)
@@ -41,7 +40,6 @@
 
 | 메서드 | 경로 | 설명 | 응답 |
 |---|---|---|---|
-| GET | `/api/members` | 회원 목록 조회 (로그인 필요) | 200 / 401 |
 | GET | `/api/members/{id}` | 회원 단건 조회 (본인만) | 200 / 401 / 403 / 404 |
 | POST | `/api/members` | 회원가입 | 201 / 409(이메일 중복) |
 | PUT | `/api/members/{id}` | 회원 수정 (본인만, 이름만) | 200 / 400 / 401 / 403 / 404 |
@@ -95,12 +93,12 @@
 | 구분 | API |
 |---|---|
 | 공개 | 회원가입, 로그인, 공연 목록/상세 조회 |
-| 로그인 필요 | 예매/취소/내 예매 내역, 회원 목록/단건 조회/수정, 공연 등록/수정/삭제 |
+| 로그인 필요 | 예매/취소/내 예매 내역, 회원 단건 조회/수정, 공연 등록/수정/삭제 |
 | 본인만 | 회원 단건 조회/수정(`403`), 예매 취소(`404`) |
 
 - 토큰이 없거나 만료/위조된 경우 `401`, 다른 회원의 정보에 접근하면 `403`으로 응답합니다.
 - 토큰 유효 시간은 기본 60분이며 `jwt.access-token-expiration-minutes`로 조정할 수 있습니다. 리프레시 토큰은 아직 없습니다.
-- 공연 등록/수정/삭제는 관리자 구분이 아직 없어 로그인한 회원이라면 누구나 할 수 있습니다. 회원 목록도 마찬가지입니다. (역할 도입 시 제한 예정)
+- 공연 등록/수정/삭제는 관리자 구분이 아직 없어 로그인한 회원이라면 누구나 할 수 있습니다. (역할 도입 시 제한 예정)
 
 ## 오류 응답 형식
 
@@ -132,8 +130,13 @@
 
 ```text
 com.ticketo
-├── config              # 전역 설정 (PasswordConfig 등)
+├── config              # 전역 설정
+│   ├── PasswordConfig          # BCrypt 인코더
+│   └── SecurityConfig          # 보안 필터 체인, 공개/인증 필요 API 구분
 ├── com                 # 공통 컴포넌트
+│   ├── JwtTokenProvider        # JWT 발급/검증
+│   ├── JwtAuthenticationFilter # Authorization 헤더의 토큰 검증
+│   └── JsonAuthErrorHandler    # 401/403을 ErrorResponse JSON으로 응답
 ├── member
 │   ├── controller      # MemberController
 │   ├── service         # MemberService
@@ -189,7 +192,6 @@ CREATE DATABASE ticketo DEFAULT CHARACTER SET utf8mb4;
 | `DB_NAME` | 데이터베이스 이름 (미지정 시 `ticketo`) |
 | `DB_USERNAME` | **필수, 직접 채워야 하는 항목** — DB 계정 |
 | `DB_PASSWORD` | **필수, 직접 채워야 하는 항목** — DB 비밀번호 |
-
 | `JWT_SECRET` | **필수** — JWT 서명 비밀키. HS256 요구사항에 따라 32자(256비트) 이상이어야 합니다. |
 
 `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`은 기본값이 없어서 지정하지 않으면 앱이 기동되지 않습니다.
