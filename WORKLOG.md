@@ -34,6 +34,11 @@
   - 첫 구현에서 `ResponseStatusException` 사유가 "Not Found"로 덮어써지고 경로 변수 오류가 영어로 나와 `handleErrorResponseException`, `handleTypeMismatch`를 오버라이드해 수정
   - 503(락 충돌) 경로는 데드락이 재현되지 않아 이번에도 실제 요청으로 검증하지 못함
   - 부수 확인: FK가 걸린 공연 삭제(`DELETE /api/tickets/{id}`)는 500으로 응답. 409로 바꾸는 것은 별도 작업 후보
+- Member 단건 조회/수정 추가: `GET /api/members/{id}`, `PUT /api/members/{id}` (이름만 수정) (vo/mapper `6334328`, service `6ce86da`, controller `81c97d8`)
+  - 수정 전용 `MemberUpdateVO`(name만) 사용. 이메일은 로그인 ID, 비밀번호 변경은 본인 확인이 필요해 JWT 이후로 미룸
+  - 계층별로 나눠 커밋하고 각 단계마다 앱 기동 확인
+  - curl로 검증: 조회 200·404, 수정 200(앞뒤 공백 제거, 같은 이름 재수정도 200)·404, 빈 이름/101자 400(fieldErrors), 이메일·비밀번호 필드 무시, 수정 후 기존 비밀번호로 로그인 200, id 형식 오류 400
+  - 검증용 회원(`update-test@example.com`, id=16)이 DB에 남음. 회원 삭제 API가 없어 DB에서 직접 정리 필요
 
 ## 10/9 (금)
 
