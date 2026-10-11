@@ -14,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -24,10 +22,6 @@ public class MemberService {
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-
-    public List<MemberVO> getMemberList() {
-        return memberMapper.selectMemberList();
-    }
 
     /** 회원 단건 조회 (비밀번호 제외). 본인 정보만 조회할 수 있고, 없으면 404 */
     public MemberVO getMember(Long id, Long loginMemberId) {

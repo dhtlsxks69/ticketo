@@ -7,12 +7,6 @@
         id, email, name, created_at
     </sql>
 
-    <select id="selectMemberList" resultType="com.ticketo.member.vo.MemberVO">
-        SELECT <include refid="memberColumns"/>
-        FROM member
-        ORDER BY id DESC
-    </select>
-
     <select id="selectMemberById" resultType="com.ticketo.member.vo.MemberVO">
         SELECT <include refid="memberColumns"/>
         FROM member

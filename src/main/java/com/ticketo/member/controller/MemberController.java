@@ -18,20 +18,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
 public class MemberController {
 
     private final MemberService memberService;
-
-    /** 회원 목록 조회 */
-    @GetMapping
-    public List<MemberVO> list() {
-        return memberService.getMemberList();
-    }
 
     /** 회원 단건 조회 (로그인 필요, 본인만) */
     @GetMapping("/{id}")
