@@ -34,4 +34,10 @@
         INSERT INTO member (email, password, name)
         VALUES (#{email}, #{password}, #{name})
     </insert>
+
+    <update id="updateMemberName">
+        UPDATE member
+        SET name = #{name}
+        WHERE id = #{id}
+    </update>
 </mapper>

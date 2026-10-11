@@ -25,4 +25,7 @@ public interface MemberMapper {
 
     /** INSERT 후 생성된 PK가 {@code member.id}에 채워진다. */
     int insertMember(MemberVO member);
+
+    /** 이름 수정. 없는 id이면 0건이 갱신된다. */
+    int updateMemberName(@Param("id") Long id, @Param("name") String name);
 }
