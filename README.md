@@ -3,7 +3,7 @@
 공연 티켓 예매 서비스의 백엔드 API 프로젝트입니다. 회원, 공연(티켓), 예매 도메인으로 구성하며,
 **잔여 수량 기반 좌석 관리**와 **예매 시 발생하는 동시성 문제의 재현과 해결 과정**을 정리하는 것이 목표입니다.
 
-> 현재는 회원(가입/로그인), 공연(CRUD), 예매(예매/취소/내 예매 내역) 도메인까지 구현되어 있습니다. 동시성 처리(조건부 UPDATE, 비관적 락 비교)까지 구현했고, JWT는 아직 구현 전입니다.
+> 현재는 회원(가입/로그인), 공연(CRUD), 예매(예매/취소/내 예매 내역) 도메인까지 구현되어 있습니다. 동시성 처리(조건부 UPDATE, 비관적 락 비교)와 JWT 인증까지 구현했습니다.
 
 ## 기술 스택
 
@@ -14,7 +14,8 @@
 | Build | Gradle (Kotlin DSL) |
 | Database | MySQL 8.0 (utf8mb4) |
 | Persistence | MyBatis 3.0.5 starter (SQL은 XML 매퍼에 작성) |
-| 비밀번호 해시 | BCrypt (`spring-security-crypto`만 사용, Spring Security 전체는 미사용) |
+| 인증 | Spring Security(JWT 필터, STATELESS) + jjwt 0.12.6 (HS256 액세스 토큰) |
+| 비밀번호 해시 | BCrypt |
 | 기타 | Lombok, Spring Validation |
 
 ## 구현 현황
@@ -30,7 +31,7 @@
 - [x] 내 예매 내역 조회 (최신순, 취소된 예매 포함)
 - [x] 동시성 처리: 문제 재현 → 조건부 UPDATE → 비관적 락 비교
 - [x] 공통 예외 처리, 오류 응답 포맷 통일
-- [ ] JWT 인증 (예정)
+- [x] JWT 인증 (로그인 시 액세스 토큰 발급, 예매/회원 수정/공연 쓰기는 로그인 필요, 본인 데이터만 접근)
 
 ## API 목록
 
@@ -40,14 +41,14 @@
 
 | 메서드 | 경로 | 설명 | 응답 |
 |---|---|---|---|
-| GET | `/api/members` | 회원 목록 조회 | 200 |
-| GET | `/api/members/{id}` | 회원 단건 조회 | 200 / 404 |
+| GET | `/api/members` | 회원 목록 조회 (로그인 필요) | 200 / 401 |
+| GET | `/api/members/{id}` | 회원 단건 조회 (본인만) | 200 / 401 / 403 / 404 |
 | POST | `/api/members` | 회원가입 | 201 / 409(이메일 중복) |
-| PUT | `/api/members/{id}` | 회원 수정 (이름만) | 200 / 400 / 404 |
-| POST | `/api/members/login` | 로그인 (토큰 발급 없음) | 200 / 401 |
+| PUT | `/api/members/{id}` | 회원 수정 (본인만, 이름만) | 200 / 400 / 401 / 403 / 404 |
+| POST | `/api/members/login` | 로그인 (액세스 토큰 발급) | 200 / 401 |
 
 - 비밀번호는 응답에 포함되지 않습니다.
-- 수정은 `name`만 가능합니다. 이메일은 로그인 ID이고, 비밀번호 변경은 본인 확인이 필요해 JWT 도입 후 추가합니다. 요청에 다른 필드가 있어도 무시됩니다.
+- 수정은 `name`만 가능합니다. 이메일은 로그인 ID이고, 비밀번호 변경은 현재 비밀번호 확인 절차가 필요해 아직 제공하지 않습니다. 요청에 다른 필드가 있어도 무시됩니다.
 - 로그인 실패는 이메일 없음/비밀번호 불일치 모두 같은 401 메시지로 응답합니다.
 
 ### Ticket
@@ -56,9 +57,9 @@
 |---|---|---|---|
 | GET | `/api/tickets` | 공연 목록 (공연 일시 오름차순) | 200 |
 | GET | `/api/tickets/{id}` | 공연 상세 (잔여 수량 포함) | 200 / 404 |
-| POST | `/api/tickets` | 공연 등록 | 201 |
-| PUT | `/api/tickets/{id}` | 공연 수정 | 200 / 404 / 409(판매된 수량보다 총 수량을 줄이는 경우) |
-| DELETE | `/api/tickets/{id}` | 공연 삭제 | 204 / 404 / 409(예매 내역이 있는 공연) |
+| POST | `/api/tickets` | 공연 등록 (로그인 필요) | 201 / 401 |
+| PUT | `/api/tickets/{id}` | 공연 수정 (로그인 필요) | 200 / 401 / 404 / 409(판매된 수량보다 총 수량을 줄이는 경우) |
+| DELETE | `/api/tickets/{id}` | 공연 삭제 (로그인 필요) | 204 / 401 / 404 / 409(예매 내역이 있는 공연) |
 
 - 잔여 수량은 서버가 관리하며, 등록 시 총 수량으로 초기화됩니다. 요청 값은 무시됩니다.
 - 예매 내역이 있는 공연은 삭제할 수 없습니다. 취소된 예매도 내역으로 남아 있으므로 모두 삭제 불가입니다.
@@ -67,14 +68,39 @@
 
 | 메서드 | 경로 | 설명 | 응답 |
 |---|---|---|---|
-| GET | `/api/reservations?memberId=` | 내 예매 내역 (최신순, 취소된 예매 포함) | 200 / 400(memberId 누락) / 404(회원 없음) |
-| POST | `/api/reservations` | 예매 (잔여 수량 차감) | 201 / 400(검증 실패) / 404(회원·공연 없음) / 409(잔여 수량 부족) |
-| DELETE | `/api/reservations/{id}` | 예매 취소 (잔여 수량 복구) | 200 / 404 / 409(이미 취소됨) |
+| GET | `/api/reservations` | 내 예매 내역 (로그인 필요, 최신순, 취소된 예매 포함) | 200 / 401 |
+| POST | `/api/reservations` | 예매 (로그인 필요, 잔여 수량 차감) | 201 / 400(검증 실패) / 401 / 404(공연 없음) / 409(잔여 수량 부족) |
+| DELETE | `/api/reservations/{id}` | 예매 취소 (로그인 필요, 본인 예매만, 잔여 수량 복구) | 200 / 401 / 404 / 409(이미 취소됨) |
 
 - 예매 취소는 행을 삭제하지 않고 `status`를 `CANCELED`로 바꾼 뒤 그 예매를 응답합니다.
 - `status`는 서버가 관리하며(`RESERVED` / `CANCELED`) 요청 값은 무시됩니다. DB에는 CHECK 제약이 걸려 있습니다.
-- JWT 도입 전까지 예매한 회원은 요청 본문의 `memberId`로 받습니다.
+- 예매한 회원은 토큰에서 가져옵니다. 요청 본문의 `memberId`는 무시됩니다. 다른 회원의 예매를 취소하려 하면 존재 여부를 알려주지 않도록 없는 예매와 같은 404로 응답합니다.
 - 예매는 잔여 수량을 조건부 UPDATE로 차감하므로 동시 요청에도 초과 판매가 생기지 않습니다. (아래 "동시성 이슈 해결 과정" 참고)
+
+## 인증 (JWT)
+
+1. `POST /api/members/login`으로 로그인하면 응답에 액세스 토큰이 포함됩니다.
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "member": { "id": 1, "email": "test@example.com", "name": "테스트", "createdAt": "..." }
+}
+```
+
+2. 로그인이 필요한 API는 `Authorization: Bearer <accessToken>` 헤더와 함께 호출합니다.
+
+| 구분 | API |
+|---|---|
+| 공개 | 회원가입, 로그인, 공연 목록/상세 조회 |
+| 로그인 필요 | 예매/취소/내 예매 내역, 회원 목록/단건 조회/수정, 공연 등록/수정/삭제 |
+| 본인만 | 회원 단건 조회/수정(`403`), 예매 취소(`404`) |
+
+- 토큰이 없거나 만료/위조된 경우 `401`, 다른 회원의 정보에 접근하면 `403`으로 응답합니다.
+- 토큰 유효 시간은 기본 60분이며 `jwt.access-token-expiration-minutes`로 조정할 수 있습니다. 리프레시 토큰은 아직 없습니다.
+- 공연 등록/수정/삭제는 관리자 구분이 아직 없어 로그인한 회원이라면 누구나 할 수 있습니다. 회원 목록도 마찬가지입니다. (역할 도입 시 제한 예정)
 
 ## 오류 응답 형식
 
@@ -96,7 +122,8 @@
 | 상태 | 발생 상황 |
 |---|---|
 | 400 | 입력값 검증 실패, 깨진 JSON/타입 오류, 필수 파라미터 누락, 경로 변수 형식 오류 |
-| 401 / 404 / 409 | 서비스가 던진 `ResponseStatusException`의 사유를 `message`로 전달 |
+| 401 / 403 | 토큰이 없거나 유효하지 않음(401), 본인 외 회원 정보 접근(403) |
+| 404 / 409 | 서비스가 던진 `ResponseStatusException`의 사유를 `message`로 전달 |
 | 404 / 405 / 415 | 없는 경로, 허용되지 않는 메서드, 지원하지 않는 Content-Type |
 | 503 | 데드락 등 DB 락 충돌로 트랜잭션이 롤백된 경우 (재시도 안내) |
 | 500 | 예상하지 못한 예외. 내부 정보는 응답에 노출하지 않고 서버 로그에만 남김 |
@@ -163,19 +190,22 @@ CREATE DATABASE ticketo DEFAULT CHARACTER SET utf8mb4;
 | `DB_USERNAME` | **필수, 직접 채워야 하는 항목** — DB 계정 |
 | `DB_PASSWORD` | **필수, 직접 채워야 하는 항목** — DB 비밀번호 |
 
-`DB_USERNAME`, `DB_PASSWORD`는 기본값이 없어서 지정하지 않으면 앱이 기동되지 않습니다.
+| `JWT_SECRET` | **필수** — JWT 서명 비밀키. HS256 요구사항에 따라 32자(256비트) 이상이어야 합니다. |
+
+`DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`은 기본값이 없어서 지정하지 않으면 앱이 기동되지 않습니다.
+(`JWT_SECRET`이 없거나 너무 짧으면 기동 시점에 오류가 납니다. 테스트는 Gradle이 테스트 전용 값을 주입합니다.)
 본인의 환경에 맞는 값을 환경변수로 지정해서 사용하세요. 실제 비밀번호는 저장소에 커밋하지 마세요.
 
 ### 4. 실행
 
 ```bash
 # macOS / Linux / Git Bash
-DB_USERNAME=<계정> DB_PASSWORD=<비밀번호> ./gradlew bootRun
+DB_USERNAME=<계정> DB_PASSWORD=<비밀번호> JWT_SECRET=<32자 이상의 비밀키> ./gradlew bootRun
 ```
 
 ```powershell
 # Windows PowerShell
-$env:DB_USERNAME = "<계정>"; $env:DB_PASSWORD = "<비밀번호>"; .\gradlew.bat bootRun
+$env:DB_USERNAME = "<계정>"; $env:DB_PASSWORD = "<비밀번호>"; $env:JWT_SECRET = "<32자 이상의 비밀키>"; .\gradlew.bat bootRun
 ```
 
 서버는 `8080` 포트에서 기동합니다. IntelliJ에서는 `TicketoApplication`을 직접 실행해도 됩니다.
@@ -196,19 +226,24 @@ Content-Type: application/json
 { "email": "test@example.com", "password": "password123" }
 ```
 
+이후 요청에는 로그인 응답의 `accessToken`을 헤더로 보냅니다.
+
 ```http
 POST http://localhost:8080/api/reservations
+Authorization: Bearer <accessToken>
 Content-Type: application/json
 
-{ "memberId": 1, "ticketId": 1, "quantity": 2 }
+{ "ticketId": 1, "quantity": 2 }
 ```
 
 ```http
-GET http://localhost:8080/api/reservations?memberId=1
+GET http://localhost:8080/api/reservations
+Authorization: Bearer <accessToken>
 ```
 
 ```http
 DELETE http://localhost:8080/api/reservations/1
+Authorization: Bearer <accessToken>
 ```
 
 ## 동시성 이슈 해결 과정
