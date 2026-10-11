@@ -24,7 +24,7 @@
 - [x] 회원 목록 조회
 - [x] 공연 등록 / 목록 / 상세 / 수정 / 삭제
 - [x] 수량 기반 잔여 좌석 관리 (`total_quantity` / `remaining_quantity`)
-- [ ] 회원 단건 조회 / 수정 (예정)
+- [x] 회원 단건 조회 / 수정 (이름만 수정 가능)
 - [x] 예매 (회원/공연 존재 확인, 잔여 수량 부족 시 409, 잔여 수량 차감)
 - [x] 예매 취소 (상태를 CANCELED로 변경, 잔여 수량 복구, 중복 취소 409)
 - [x] 내 예매 내역 조회 (최신순, 취소된 예매 포함)
@@ -41,10 +41,13 @@
 | 메서드 | 경로 | 설명 | 응답 |
 |---|---|---|---|
 | GET | `/api/members` | 회원 목록 조회 | 200 |
+| GET | `/api/members/{id}` | 회원 단건 조회 | 200 / 404 |
 | POST | `/api/members` | 회원가입 | 201 / 409(이메일 중복) |
+| PUT | `/api/members/{id}` | 회원 수정 (이름만) | 200 / 400 / 404 |
 | POST | `/api/members/login` | 로그인 (토큰 발급 없음) | 200 / 401 |
 
 - 비밀번호는 응답에 포함되지 않습니다.
+- 수정은 `name`만 가능합니다. 이메일은 로그인 ID이고, 비밀번호 변경은 본인 확인이 필요해 JWT 도입 후 추가합니다. 요청에 다른 필드가 있어도 무시됩니다.
 - 로그인 실패는 이메일 없음/비밀번호 불일치 모두 같은 401 메시지로 응답합니다.
 
 ### Ticket
@@ -107,7 +110,7 @@ com.ticketo
 │   ├── controller      # MemberController
 │   ├── service         # MemberService
 │   ├── mapper          # MemberMapper
-│   └── vo              # MemberVO, MemberLoginVO
+│   └── vo              # MemberVO, MemberLoginVO, MemberUpdateVO
 ├── ticket
 │   ├── controller      # TicketController
 │   ├── service         # TicketService
