@@ -2,6 +2,7 @@ package com.ticketo.member.service;
 
 import com.ticketo.member.mapper.MemberMapper;
 import com.ticketo.member.vo.MemberLoginVO;
+import com.ticketo.member.vo.MemberUpdateVO;
 import com.ticketo.member.vo.MemberVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -23,6 +24,24 @@ public class MemberService {
 
     public List<MemberVO> getMemberList() {
         return memberMapper.selectMemberList();
+    }
+
+    /** 회원 단건 조회 (비밀번호 제외). 없으면 404 */
+    public MemberVO getMember(Long id) {
+        MemberVO member = memberMapper.selectMemberById(id);
+        if (member == null) {
+            throw notFound(id);
+        }
+        return member;
+    }
+
+    /** 회원 수정: 이름만 수정하고, 수정된 회원(비밀번호 제외)을 반환한다. 없으면 404 */
+    @Transactional
+    public MemberVO updateMember(Long id, MemberUpdateVO request) {
+        if (memberMapper.updateMemberName(id, request.getName().trim()) == 0) {
+            throw notFound(id);
+        }
+        return memberMapper.selectMemberById(id);
     }
 
     /** 회원가입: 이메일 중복 검사 후 비밀번호를 BCrypt로 해시해 저장하고, 저장된 회원(비밀번호 제외)을 반환한다. */
@@ -56,5 +75,9 @@ public class MemberService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
         }
         return memberMapper.selectMemberById(member.getId());
+    }
+
+    private ResponseStatusException notFound(Long id) {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다. id=" + id);
     }
 }
