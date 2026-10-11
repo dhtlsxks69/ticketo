@@ -3,7 +3,7 @@
 공연 티켓 예매 서비스의 백엔드 API 프로젝트입니다. 회원, 공연(티켓), 예매 도메인으로 구성하며,
 **잔여 수량 기반 좌석 관리**와 **예매 시 발생하는 동시성 문제의 재현과 해결 과정**을 정리하는 것이 목표입니다.
 
-> 현재는 회원(가입/로그인)과 공연(CRUD) 도메인까지 구현되어 있습니다. 예매, 동시성 처리, JWT는 아직 구현 전입니다.
+> 현재는 회원(가입/로그인), 공연(CRUD), 예매(예매/취소/내 예매 내역) 도메인까지 구현되어 있습니다. 동시성 처리, JWT는 아직 구현 전입니다.
 
 ## 기술 스택
 
@@ -25,7 +25,9 @@
 - [x] 공연 등록 / 목록 / 상세 / 수정 / 삭제
 - [x] 수량 기반 잔여 좌석 관리 (`total_quantity` / `remaining_quantity`)
 - [ ] 회원 단건 조회 / 수정 (예정)
-- [ ] 예매 / 예매 취소 / 내 예매 내역 (예정)
+- [x] 예매 (회원/공연 존재 확인, 잔여 수량 부족 시 409, 잔여 수량 차감)
+- [x] 예매 취소 (상태를 CANCELED로 변경, 잔여 수량 복구, 중복 취소 409)
+- [x] 내 예매 내역 조회 (최신순, 취소된 예매 포함)
 - [ ] 동시성 처리: 문제 재현 → 조건부 UPDATE → 비관적 락 비교 (예정)
 - [ ] 공통 예외 처리, 응답 포맷 통일 (예정)
 - [ ] JWT 인증 (예정)
@@ -57,6 +59,19 @@
 
 - 잔여 수량은 서버가 관리하며, 등록 시 총 수량으로 초기화됩니다. 요청 값은 무시됩니다.
 
+### Reservation
+
+| 메서드 | 경로 | 설명 | 응답 |
+|---|---|---|---|
+| GET | `/api/reservations?memberId=` | 내 예매 내역 (최신순, 취소된 예매 포함) | 200 / 400(memberId 누락) / 404(회원 없음) |
+| POST | `/api/reservations` | 예매 (잔여 수량 차감) | 201 / 400(검증 실패) / 404(회원·공연 없음) / 409(잔여 수량 부족) |
+| DELETE | `/api/reservations/{id}` | 예매 취소 (잔여 수량 복구) | 200 / 404 / 409(이미 취소됨) |
+
+- 예매 취소는 행을 삭제하지 않고 `status`를 `CANCELED`로 바꾼 뒤 그 예매를 응답합니다.
+- `status`는 서버가 관리하며(`RESERVED` / `CANCELED`) 요청 값은 무시됩니다. DB에는 CHECK 제약이 걸려 있습니다.
+- JWT 도입 전까지 예매한 회원은 요청 본문의 `memberId`로 받습니다.
+- 동시성 처리가 없는 기본 버전입니다. 동시 요청 시 잔여 수량이 어긋날 수 있습니다.
+
 ## 패키지 구조
 
 ```text
@@ -68,19 +83,22 @@ com.ticketo
 │   ├── service         # MemberService
 │   ├── mapper          # MemberMapper
 │   └── vo              # MemberVO, MemberLoginVO
-└── ticket
-    ├── controller      # TicketController
-    ├── service         # TicketService
-    ├── mapper          # TicketMapper
-    └── vo              # TicketVO
+├── ticket
+│   ├── controller      # TicketController
+│   ├── service         # TicketService
+│   ├── mapper          # TicketMapper
+│   └── vo              # TicketVO
+└── reservation
+    ├── controller      # ReservationController
+    ├── service         # ReservationService
+    ├── mapper          # ReservationMapper
+    └── vo              # ReservationVO
 
 src/main/resources
 ├── application.yml
 ├── schema.sql          # 기동 시 실행되는 테이블 생성 스크립트
 └── mapper/{feature}/{Feature}Mapper.xml
 ```
-
-`reservation` 패키지는 아직 없습니다. (`schema.sql`에는 `reservation` 테이블이 정의되어 있습니다.)
 
 ## 실행 방법
 
@@ -102,6 +120,7 @@ CREATE DATABASE ticketo DEFAULT CHARACTER SET utf8mb4;
 
 별도로 실행할 필요가 없습니다. `spring.sql.init.mode=always` 설정에 따라 앱 기동 시 `schema.sql`이 실행되며,
 `CREATE TABLE IF NOT EXISTS`를 사용하므로 반복 기동해도 안전합니다. (member, ticket, reservation 테이블)
+이미 만들어진 테이블은 `schema.sql`을 고쳐도 바뀌지 않으므로, 변경분은 `ALTER TABLE`로 직접 반영하거나 테이블을 `DROP`한 뒤 재기동하세요.
 
 ### 3. 접속 정보 설정
 
@@ -146,6 +165,21 @@ POST http://localhost:8080/api/members/login
 Content-Type: application/json
 
 { "email": "test@example.com", "password": "password123" }
+```
+
+```http
+POST http://localhost:8080/api/reservations
+Content-Type: application/json
+
+{ "memberId": 1, "ticketId": 1, "quantity": 2 }
+```
+
+```http
+GET http://localhost:8080/api/reservations?memberId=1
+```
+
+```http
+DELETE http://localhost:8080/api/reservations/1
 ```
 
 ## 동시성 이슈 해결 과정
