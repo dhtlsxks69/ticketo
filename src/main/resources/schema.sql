@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS reservation (
     PRIMARY KEY (id),
     KEY idx_reservation_member (member_id),
     KEY idx_reservation_ticket (ticket_id),
+    CONSTRAINT chk_reservation_status CHECK (status IN ('RESERVED', 'CANCELED')),
     CONSTRAINT fk_reservation_member FOREIGN KEY (member_id) REFERENCES member (id),
     CONSTRAINT fk_reservation_ticket FOREIGN KEY (ticket_id) REFERENCES ticket (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
