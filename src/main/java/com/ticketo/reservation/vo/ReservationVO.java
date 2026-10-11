@@ -22,8 +22,8 @@ public class ReservationVO {
 
     private Long id;
 
-    /** 예매한 회원. JWT 도입 전까지는 요청 값으로 받는다. */
-    @NotNull
+    /** 예매한 회원. 로그인한 회원의 id로 서버가 채우므로 요청 값은 무시하고 응답에만 포함한다. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long memberId;
 
     /** 예매 대상 공연(ticket.id) */

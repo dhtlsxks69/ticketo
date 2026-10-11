@@ -88,11 +88,12 @@ public class ReservationService {
     /**
      * 예매 취소: 예매 상태를 CANCELED로 바꾸고 예매했던 수량만큼 잔여 수량을 복구한다.
      * 이미 취소된 예매는 수량을 중복 복구하지 않도록 409로 거절한다.
+     * 본인의 예매만 취소할 수 있으며, 다른 회원의 예매는 존재 여부를 알려주지 않도록 없는 예매와 똑같이 404로 응답한다.
      */
     @Transactional
-    public ReservationVO cancel(Long id) {
+    public ReservationVO cancel(Long id, Long loginMemberId) {
         ReservationVO reservation = reservationMapper.selectReservationById(id);
-        if (reservation == null) {
+        if (reservation == null || !reservation.getMemberId().equals(loginMemberId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "예매를 찾을 수 없습니다. id=" + id);
         }
 
