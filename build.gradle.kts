@@ -35,8 +35,6 @@ repositories {
 dependencies {
     // Web: 내장 Tomcat + Spring MVC (REST API 작성)
     implementation("org.springframework.boot:spring-boot-starter-web")
-    // Data JPA: Hibernate 기반 ORM + Spring Data Repository
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     // MyBatis: mapper 인터페이스 + XML 기반 SQL 매핑
     implementation("org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5")
     // Validation: @Valid, @NotBlank 등 Bean Validation(Hibernate Validator)
