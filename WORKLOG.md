@@ -10,7 +10,7 @@
   - `mybatis-spring-boot-starter`가 `spring-boot-starter-jdbc`(HikariCP, spring-jdbc, spring-tx)를 포함해 트랜잭션 관리자는 그대로 유지됨을 의존성 트리로 확인
   - 삭제: `BaseTimeEntity.java`, `JpaAuditingConfig.java`, `build.gradle.kts`의 `spring-boot-starter-data-jpa`와 주석, `application.yml`의 `spring.jpa` 섹션과 `org.hibernate` 로깅 설정
   - `compileJava`, `compileTestJava` 통과. 앱 기동과 테스트 실행은 하지 않음 (기동 확인은 다음 작업 때)
-  - 참고: `TicketoApplication.java` 주석에 "JPA" 언급이 남아 있음 (이번 범위 밖이라 수정하지 않음)
+  - 참고: `TicketoApplication.java` 주석에 "JPA" 언급이 남아 있어 별도로 정리. 13행 "Web, JPA, MySQL 등"을 "Web, MyBatis, MySQL 등"으로, 27행 "DataSource/JPA 초기화"를 "DataSource/MyBatis 초기화"로 수정 (주석만 변경, `compileJava` 통과)
 - README 점검 및 수정 (코드는 수정하지 않음)
   - 패키지 구조에 `com/GlobalExceptionHandler`, `com/ErrorResponse`, `member/vo/MemberLoginResponseVO` 추가 (실제 파일 위치 `git ls-files`로 확인)
   - 환경변수 설명: `DB_*`는 `application.yml`이 읽고, `JWT_SECRET`은 `JwtTokenProvider`가 `@Value`로 코드에서 직접 읽는다는 점을 구분해서 표기
