@@ -41,9 +41,9 @@
 | 메서드 | 경로 | 설명 | 응답 |
 |---|---|---|---|
 | GET | `/api/members/{id}` | 회원 단건 조회 (본인만) | 200 / 401 / 403 / 404 |
-| POST | `/api/members` | 회원가입 | 201 / 409(이메일 중복) |
+| POST | `/api/members` | 회원가입 | 201 / 400 / 409(이메일 중복) |
 | PUT | `/api/members/{id}` | 회원 수정 (본인만, 이름만) | 200 / 400 / 401 / 403 / 404 |
-| POST | `/api/members/login` | 로그인 (액세스 토큰 발급) | 200 / 401 |
+| POST | `/api/members/login` | 로그인 (액세스 토큰 발급) | 200 / 400 / 401 |
 
 - 비밀번호는 응답에 포함되지 않습니다.
 - 수정은 `name`만 가능합니다. 이메일은 로그인 ID이고, 비밀번호 변경은 현재 비밀번호 확인 절차가 필요해 아직 제공하지 않습니다. 요청에 다른 필드가 있어도 무시됩니다.
@@ -55,8 +55,8 @@
 |---|---|---|---|
 | GET | `/api/tickets` | 공연 목록 (공연 일시 오름차순) | 200 |
 | GET | `/api/tickets/{id}` | 공연 상세 (잔여 수량 포함) | 200 / 404 |
-| POST | `/api/tickets` | 공연 등록 (로그인 필요) | 201 / 401 |
-| PUT | `/api/tickets/{id}` | 공연 수정 (로그인 필요) | 200 / 401 / 404 / 409(판매된 수량보다 총 수량을 줄이는 경우) |
+| POST | `/api/tickets` | 공연 등록 (로그인 필요) | 201 / 400 / 401 |
+| PUT | `/api/tickets/{id}` | 공연 수정 (로그인 필요) | 200 / 400 / 401 / 404 / 409(판매된 수량보다 총 수량을 줄이는 경우) |
 | DELETE | `/api/tickets/{id}` | 공연 삭제 (로그인 필요) | 204 / 401 / 404 / 409(예매 내역이 있는 공연) |
 
 - 잔여 수량은 서버가 관리하며, 등록 시 총 수량으로 초기화됩니다. 요청 값은 무시됩니다.
@@ -134,6 +134,8 @@ com.ticketo
 │   ├── PasswordConfig          # BCrypt 인코더
 │   └── SecurityConfig          # 보안 필터 체인, 공개/인증 필요 API 구분
 ├── com                 # 공통 컴포넌트
+│   ├── GlobalExceptionHandler  # 모든 오류를 ErrorResponse 형식으로 통일해 응답
+│   ├── ErrorResponse           # 오류 응답 형식 (timestamp, status, error, message, path, fieldErrors)
 │   ├── JwtTokenProvider        # JWT 발급/검증
 │   ├── JwtAuthenticationFilter # Authorization 헤더의 토큰 검증
 │   └── JsonAuthErrorHandler    # 401/403을 ErrorResponse JSON으로 응답
@@ -141,7 +143,7 @@ com.ticketo
 │   ├── controller      # MemberController
 │   ├── service         # MemberService
 │   ├── mapper          # MemberMapper
-│   └── vo              # MemberVO, MemberLoginVO, MemberUpdateVO
+│   └── vo              # MemberVO, MemberLoginVO, MemberLoginResponseVO, MemberUpdateVO
 ├── ticket
 │   ├── controller      # TicketController
 │   ├── service         # TicketService
@@ -183,7 +185,10 @@ CREATE DATABASE ticketo DEFAULT CHARACTER SET utf8mb4;
 
 ### 3. 접속 정보 설정
 
-`src/main/resources/application.yml`은 아래 환경변수로 DB 접속 정보를 주입받습니다.
+아래 환경변수로 값을 주입합니다. 주입 경로가 두 가지입니다.
+
+- `DB_*`: `src/main/resources/application.yml`이 `${DB_HOST:localhost}` 같은 플레이스홀더로 읽어 DataSource 설정에 사용합니다.
+- `JWT_SECRET`: `application.yml`에는 없고, `JwtTokenProvider`가 코드에서 `@Value("${JWT_SECRET}")`로 직접 읽습니다. 그래서 yml만 보면 보이지 않지만 반드시 지정해야 합니다.
 
 | 환경변수 | 설명 |
 |---|---|
@@ -192,7 +197,7 @@ CREATE DATABASE ticketo DEFAULT CHARACTER SET utf8mb4;
 | `DB_NAME` | 데이터베이스 이름 (미지정 시 `ticketo`) |
 | `DB_USERNAME` | **필수, 직접 채워야 하는 항목** — DB 계정 |
 | `DB_PASSWORD` | **필수, 직접 채워야 하는 항목** — DB 비밀번호 |
-| `JWT_SECRET` | **필수** — JWT 서명 비밀키. HS256 요구사항에 따라 32자(256비트) 이상이어야 합니다. |
+| `JWT_SECRET` | **필수** (코드에서 직접 읽음) — JWT 서명 비밀키. HS256 요구사항에 따라 32자(256비트) 이상이어야 합니다. |
 
 `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`은 기본값이 없어서 지정하지 않으면 앱이 기동되지 않습니다.
 (`JWT_SECRET`이 없거나 너무 짧으면 기동 시점에 오류가 납니다. 테스트는 Gradle이 테스트 전용 값을 주입합니다.)
@@ -267,7 +272,7 @@ UPDATE ticket SET remaining_quantity = remaining_quantity - #{quantity}
 WHERE id = #{id} AND remaining_quantity >= #{quantity}
 ```
 
-차감을 예매 INSERT보다 먼저 실행하고, 영향받은 행이 0이면 매진(409)으로 처리합니다. ticket 배타 락을 먼저 잡기 때문에 교착 경로가 사라졌습니다. 현재 컨트롤러가 사용하는 방식입니다.
+차감을 예매 INSERT보다 먼저 실행하고, 영향받은 행이 0이면 매진(409)으로 처리합니다. ticket 배타 락을 먼저 잡기 때문에 교착 경로가 사라진 것으로 판단합니다. (InnoDB 락 로그로 직접 확인하지는 않았습니다.) 현재 컨트롤러가 사용하는 방식입니다.
 
 ### 3. 비관적 락
 

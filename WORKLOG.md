@@ -5,12 +5,17 @@
 
 ## 10/12 (월)
 
-- JPA 잔재 정리 (MyBatis만 사용)
+- JPA 잔재 정리 (MyBatis만 사용) (`e730089`)
   - 사용처 확인: `BaseTimeEntity`·`JpaAuditingConfig`는 서로의 Javadoc에서만 참조, `jakarta.persistence` import는 `BaseTimeEntity` 한 곳, `@Entity`·Spring Data Repository 사용 없음
   - `mybatis-spring-boot-starter`가 `spring-boot-starter-jdbc`(HikariCP, spring-jdbc, spring-tx)를 포함해 트랜잭션 관리자는 그대로 유지됨을 의존성 트리로 확인
   - 삭제: `BaseTimeEntity.java`, `JpaAuditingConfig.java`, `build.gradle.kts`의 `spring-boot-starter-data-jpa`와 주석, `application.yml`의 `spring.jpa` 섹션과 `org.hibernate` 로깅 설정
   - `compileJava`, `compileTestJava` 통과. 앱 기동과 테스트 실행은 하지 않음 (기동 확인은 다음 작업 때)
   - 참고: `TicketoApplication.java` 주석에 "JPA" 언급이 남아 있음 (이번 범위 밖이라 수정하지 않음)
+- README 점검 및 수정 (코드는 수정하지 않음)
+  - 패키지 구조에 `com/GlobalExceptionHandler`, `com/ErrorResponse`, `member/vo/MemberLoginResponseVO` 추가 (실제 파일 위치 `git ls-files`로 확인)
+  - 환경변수 설명: `DB_*`는 `application.yml`이 읽고, `JWT_SECRET`은 `JwtTokenProvider`가 `@Value`로 코드에서 직접 읽는다는 점을 구분해서 표기
+  - API 표에 `@Valid` 검증 실패(400) 누락분 보완 (회원가입, 로그인, 공연 등록/수정). 동시성 섹션의 "교착 경로가 사라졌습니다"를 WORKLOG와 같게 "사라진 것으로 판단(락 로그 미확인)"으로 완화
+  - 확신 없음: 오류 표의 "없는 경로 404 / 405"는 `anyRequest().authenticated()` 때문에 토큰이 없으면 401이 먼저 나올 것으로 보이나 실행으로 확인하지 않아 고치지 않음. 동시성 표의 수치는 WORKLOG 기록 기준이며 재실행하지 않음
 
 ## 10/11 (일)
 
