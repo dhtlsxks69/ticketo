@@ -3,6 +3,15 @@
 그날 실제로 한 일을 날짜별로 기록합니다. 앞으로의 일정은 `ticketo-plan.md`를 참고합니다.
 작업 종료 시 해당 날짜에 한 일과 커밋을 추가합니다.
 
+## 10/14 (수)
+
+- 인증 동작 자동 테스트 추가: `src/test/java/com/ticketo/com/AuthSecurityTest.java` (커밋 전)
+  - 방식: `@SpringBootTest` + `@AutoConfigureMockMvc`로 `SecurityConfig`, `JwtAuthenticationFilter`가 실제 적용된 상태에서 요청. 403/404 소유자 검사는 서비스와 DB가 있어야 의미가 있어 `@WebMvcTest` + 서비스 mock 대신 선택
+  - 데이터: `JdbcTemplate`으로 회원 2명(A, B)·공연 1개·B의 예매 1건을 INSERT, 이메일 접두어 `auth-test-`/공연 제목 `auth-test`로 구분해 `@BeforeEach`와 `@AfterEach`에서 reservation → ticket → member 순으로 삭제. 롤백 방식은 쓰지 않음
+  - 시나리오: 토큰 없음/위조/만료 401(예매·취소·내 예매 내역), 타인 id 회원 조회·수정 403(이름 변경 안 됨 확인), 타인 예매 취소 404(상태·잔여 수량 유지 확인), 본문 memberId를 넣어도 토큰 회원으로 예매(응답과 DB 확인), 회원가입·로그인·공연 목록/상세 토큰 없이 호출 가능. 정상 경로(본인 조회 200, 본인 취소 200)도 함께 확인
+  - 위조 토큰은 다른 비밀키로, 만료 토큰은 같은 키(`JWT_SECRET`)로 과거 만료 시각을 넣어 jjwt로 직접 생성
+  - `ReservationConcurrencyTest`는 수정하지 않음. `compileTestJava`만 통과를 확인했고 앱 기동과 테스트 실행은 하지 않음 (IntelliJ에서 실행 예정, `DB_USERNAME`/`DB_PASSWORD` 필요)
+
 ## 10/12 (월)
 
 - JPA 잔재 정리 (MyBatis만 사용) (`e730089`)
