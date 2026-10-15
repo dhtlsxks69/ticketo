@@ -3,6 +3,23 @@
 그날 실제로 한 일을 날짜별로 기록합니다. 앞으로의 일정은 `ticketo-plan.md`를 참고합니다.
 작업 종료 시 해당 날짜에 한 일과 커밋을 추가합니다.
 
+## 10/15 (목)
+
+- 부하 테스트 1단계: 환경 준비 파일 작성 (브랜치 `feature/loadtest`, 커밋 전 — 해시는 커밋 후 추가)
+  - 추가: `loadtest/README.md`(런북), `loadtest/sql/01_seed_members.sql`, `02_seed_tickets.sql`, `03_reset.sql`, `04_verify.sql`, `99_cleanup.sql`. `.gitignore` 끝에 `loadtest/results/` 추가(UTF-8, 기존 내용 유지)
+  - 방식: 전용 DB `ticketo_loadtest`에서 `TicketoApplication` 복제 설정(`Ticketo-loadtest`, `DB_NAME=ticketo_loadtest`)으로 앱을 한 번 띄워 `schema.sql`이 테이블을 만들게 함. 개발용 설정은 수정하지 않음. SQL은 IntelliJ Database 도구/MySQL 클라이언트에서 실행(PowerShell `<` 리다이렉션은 런북에 쓰지 않음)
+  - 회원: 회원가입 API로 시드 회원 1명(`loadtest-seed@example.com`)을 만든 뒤 `01_seed_members.sql`이 그 BCrypt 해시를 복제해 `loadtest-00001@example.com ~` 생성. 모든 시나리오는 `quantity=1` 고정
+  - 모든 SQL에 접속 DB가 `ticketo_loadtest`가 아니면 오류로 중단하는 안전장치 포함
+  - 앱 기동과 SQL 실행은 하지 않음. 작성한 SQL은 문법·동작을 실제로 돌려 확인하지 못함(특히 `INSERT ... WITH RECURSIVE ... SELECT`, 가드 쿼리). k6 스크립트와 컨트롤러 변경은 다음 단계
+- 부하 테스트 1단계 수정 (커밋 전)
+  - 모든 `loadtest/sql/*.sql`의 첫 실행 문장을 `USE ticketo_loadtest;`로 하고 DB 확인 쿼리는 그 뒤에 유지
+  - 회원 기본 100명으로 변경, 분산용 공연 `loadtest-spread-001~200`(각 100,000매, 재귀 CTE + `cte_max_recursion_depth` 100000 설정)으로 확대
+  - `05_seed_fillers.sql` 추가(`loadtest-filler-NNNNN`, 개수는 `@filler_count`, 각 100매). title에 인덱스가 없어 NOT EXISTS 대신 기존 개수 이후 번호만 추가하는 방식. `04_verify.sql`은 filler를 제외하고 filler 예매·수량 변동이 없는지 확인, `99_cleanup.sql`은 filler도 삭제
+  - 삭제/갱신 범위 점검: `03_reset.sql`, `99_cleanup.sql`의 모든 DELETE/UPDATE는 이미 `loadtest-` 접두어 조건(회원 이메일 `loadtest-%@example.com`, 공연 제목 `loadtest-%`)이 있었음. reset의 UPDATE에는 수량이 달라진 행만 갱신하도록 조건 추가
+  - README에 Workbench/DBeaver/`mysql -e "source ..."` 방법과 `--default-character-set=utf8mb4` 옵션 추가
+  - 앱 기동과 SQL 실행은 하지 않음. SQL 문법·동작은 아직 실행으로 확인하지 못함
+- `04_verify.sql` 출력 간소화 (커밋 전): 공연별 전체 목록 대신 불일치/초과 판매 공연만 출력(0행이면 통과), 파일 끝에 전체 요약 한 줄(공연 수, 불일치·초과 판매 공연 수, total/remaining/reserved 합계) 추가. filler·상태별·quantity 검증 쿼리는 그대로. SQL은 실행하지 않음
+
 ## 10/14 (수)
 
 - 인증 동작 자동 테스트 추가: `src/test/java/com/ticketo/com/AuthSecurityTest.java` (`07e396b`)
