@@ -5,20 +5,27 @@
 
 ## 10/15 (목)
 
-- 부하 테스트 1단계: 환경 준비 파일 작성 (브랜치 `feature/loadtest`, 커밋 전 — 해시는 커밋 후 추가)
+- 부하 테스트 1단계: 환경 준비 파일 작성 (브랜치 `feature/loadtest`, SQL/런북 `9c185ce`, `.gitignore` `a1cf02c`)
   - 추가: `loadtest/README.md`(런북), `loadtest/sql/01_seed_members.sql`, `02_seed_tickets.sql`, `03_reset.sql`, `04_verify.sql`, `99_cleanup.sql`. `.gitignore` 끝에 `loadtest/results/` 추가(UTF-8, 기존 내용 유지)
   - 방식: 전용 DB `ticketo_loadtest`에서 `TicketoApplication` 복제 설정(`Ticketo-loadtest`, `DB_NAME=ticketo_loadtest`)으로 앱을 한 번 띄워 `schema.sql`이 테이블을 만들게 함. 개발용 설정은 수정하지 않음. SQL은 IntelliJ Database 도구/MySQL 클라이언트에서 실행(PowerShell `<` 리다이렉션은 런북에 쓰지 않음)
   - 회원: 회원가입 API로 시드 회원 1명(`loadtest-seed@example.com`)을 만든 뒤 `01_seed_members.sql`이 그 BCrypt 해시를 복제해 `loadtest-00001@example.com ~` 생성. 모든 시나리오는 `quantity=1` 고정
   - 모든 SQL에 접속 DB가 `ticketo_loadtest`가 아니면 오류로 중단하는 안전장치 포함
-  - 앱 기동과 SQL 실행은 하지 않음. 작성한 SQL은 문법·동작을 실제로 돌려 확인하지 못함(특히 `INSERT ... WITH RECURSIVE ... SELECT`, 가드 쿼리). k6 스크립트와 컨트롤러 변경은 다음 단계
-- 부하 테스트 1단계 수정 (커밋 전)
+  - 작성 시점에는 앱 기동과 SQL 실행을 하지 않았고, 실행 확인(재귀 CTE INSERT, 가드 쿼리 포함)은 아래 "부하 테스트 1단계 실행 확인" 항목에 기록. k6 스크립트와 컨트롤러 변경은 다음 단계
+- 부하 테스트 1단계 수정 (`9c185ce`)
   - 모든 `loadtest/sql/*.sql`의 첫 실행 문장을 `USE ticketo_loadtest;`로 하고 DB 확인 쿼리는 그 뒤에 유지
   - 회원 기본 100명으로 변경, 분산용 공연 `loadtest-spread-001~200`(각 100,000매, 재귀 CTE + `cte_max_recursion_depth` 100000 설정)으로 확대
   - `05_seed_fillers.sql` 추가(`loadtest-filler-NNNNN`, 개수는 `@filler_count`, 각 100매). title에 인덱스가 없어 NOT EXISTS 대신 기존 개수 이후 번호만 추가하는 방식. `04_verify.sql`은 filler를 제외하고 filler 예매·수량 변동이 없는지 확인, `99_cleanup.sql`은 filler도 삭제
   - 삭제/갱신 범위 점검: `03_reset.sql`, `99_cleanup.sql`의 모든 DELETE/UPDATE는 이미 `loadtest-` 접두어 조건(회원 이메일 `loadtest-%@example.com`, 공연 제목 `loadtest-%`)이 있었음. reset의 UPDATE에는 수량이 달라진 행만 갱신하도록 조건 추가
   - README에 Workbench/DBeaver/`mysql -e "source ..."` 방법과 `--default-character-set=utf8mb4` 옵션 추가
-  - 앱 기동과 SQL 실행은 하지 않음. SQL 문법·동작은 아직 실행으로 확인하지 못함
-- `04_verify.sql` 출력 간소화 (커밋 전): 공연별 전체 목록 대신 불일치/초과 판매 공연만 출력(0행이면 통과), 파일 끝에 전체 요약 한 줄(공연 수, 불일치·초과 판매 공연 수, total/remaining/reserved 합계) 추가. filler·상태별·quantity 검증 쿼리는 그대로. SQL은 실행하지 않음
+  - 수정 시점에는 앱 기동과 SQL 실행을 하지 않았고, 실행 확인은 아래 "부하 테스트 1단계 실행 확인" 항목에 기록
+- `04_verify.sql` 출력 간소화 (`9c185ce`): 공연별 전체 목록 대신 불일치/초과 판매 공연만 출력(0행이면 통과), 파일 끝에 전체 요약 한 줄(공연 수, 불일치·초과 판매 공연 수, total/remaining/reserved 합계) 추가. filler·상태별·quantity 검증 쿼리는 그대로. 수정 시점에는 SQL을 실행하지 않았고, 실행 확인은 아래 "부하 테스트 1단계 실행 확인" 항목에 기록
+
+- 부하 테스트 1단계 실행 확인
+  - 전용 DB `ticketo_loadtest` 생성, `Ticketo-loadtest` 실행 설정으로 앱을 띄워 테이블 생성, 회원가입 API로 시드 회원 가입
+  - 수정 전 버전 SQL로 1차 실행(회원 1,001명, 공연 7개)한 뒤 `99_cleanup.sql`로 정리. 시드 회원도 함께 삭제되어 시드 회원을 다시 가입함
+  - 수정 버전 `01_seed_members.sql`, `02_seed_tickets.sql` 실행 결과: 회원 101명, 공연 202개, 예매 0건
+  - `04_verify.sql` 통과. 개발 DB에는 `loadtest-` 데이터 0건 확인
+  - 알게 된 점: PowerShell에서는 `mysql < 파일` 리다이렉션을 쓸 수 없어 `mysql -e "source ..."` 사용, `mysql` 전체 경로 지정 필요, `--default-character-set=utf8mb4` 옵션 필요
 
 ## 10/14 (수)
 
@@ -36,7 +43,7 @@
   - 사용처 확인: `BaseTimeEntity`·`JpaAuditingConfig`는 서로의 Javadoc에서만 참조, `jakarta.persistence` import는 `BaseTimeEntity` 한 곳, `@Entity`·Spring Data Repository 사용 없음
   - `mybatis-spring-boot-starter`가 `spring-boot-starter-jdbc`(HikariCP, spring-jdbc, spring-tx)를 포함해 트랜잭션 관리자는 그대로 유지됨을 의존성 트리로 확인
   - 삭제: `BaseTimeEntity.java`, `JpaAuditingConfig.java`, `build.gradle.kts`의 `spring-boot-starter-data-jpa`와 주석, `application.yml`의 `spring.jpa` 섹션과 `org.hibernate` 로깅 설정
-  - `compileJava`, `compileTestJava` 통과. 앱 기동과 테스트 실행은 하지 않음 (기동 확인은 다음 작업 때)
+  - `compileJava`, `compileTestJava` 통과. IntelliJ에서 앱 기동, 로그인·예매·취소, ReservationConcurrencyTest 확인 완료
   - 참고: `TicketoApplication.java` 주석에 "JPA" 언급이 남아 있어 별도로 정리. 13행 "Web, JPA, MySQL 등"을 "Web, MyBatis, MySQL 등"으로, 27행 "DataSource/JPA 초기화"를 "DataSource/MyBatis 초기화"로 수정 (주석만 변경, `compileJava` 통과)
 - README 점검 및 수정 (코드는 수정하지 않음)
   - 패키지 구조에 `com/GlobalExceptionHandler`, `com/ErrorResponse`, `member/vo/MemberLoginResponseVO` 추가 (실제 파일 위치 `git ls-files`로 확인)
