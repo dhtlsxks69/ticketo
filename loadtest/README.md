@@ -1,7 +1,7 @@
 # 부하 테스트 런북
 
 예매 API(`POST /api/reservations`)를 k6로 부하 테스트하기 위한 환경 준비 절차입니다.
-이 문서는 **환경 준비(1단계)** 까지만 다룹니다. k6 스크립트와 실행 절차는 다음 단계에서 추가합니다.
+환경 준비(1단계)와 k6 스크립트 실행 방법(아래 "k6 실행")을 다룹니다.
 
 ## 원칙
 
@@ -123,6 +123,43 @@ IntelliJ를 쓰지 않거나 `mysql` 클라이언트가 설치돼 있지 않을 
 ### 7. 정리
 
 `sql/99_cleanup.sql` 로 부하 데이터를 지운다. DB째 없애려면 데이터 소스에서 직접 `DROP DATABASE ticketo_loadtest;` 를 실행한다.
+
+## k6 실행
+
+스크립트는 `loadtest/k6/` 에 있다. **저장소 루트에서** 실행한다(결과가 `loadtest/results/` 로 저장되므로). 앱은 `Ticketo-loadtest` 설정으로 띄워 둔다.
+
+| 파일 | 설명 |
+|---|---|
+| `k6/lib/config.js` | `BASE_URL`(기본 `http://localhost:8080`), `MEMBER_COUNT`(기본 100), 회원 이메일 형식, 비밀번호 검증 |
+| `k6/lib/auth.js` | `setup()`에서 회원 전원이 한 번씩만 로그인해 토큰 배열 반환 |
+| `k6/lib/metrics.js` | 커스텀 카운터와 결과 요약 저장 |
+| `k6/read.js` | 시나리오 A: 목록/상세 조회 혼합, VU 단계 상승. 로그인 불필요 |
+| `k6/reserve-hot.js` | 시나리오 B: `loadtest-hot` 에 `quantity=1` 예매 집중 |
+
+환경변수: `LOADTEST_PASSWORD`(로그인 시나리오 필수, 기본값 없음), `RESULT_NAME`(결과 파일명, 없으면 날짜시간), `BASE_URL`, `MEMBER_COUNT`, `VUS`/`DURATION`(reserve-hot, 기본 50 / 30s), `LIST_RATIO`(read의 목록 비율, 기본 0.2).
+
+커스텀 카운터: `reserve_success`(201), `reserve_sold_out`(409, 정상 응답으로 취급하며 `http_req_failed`에서 제외), `server_error_503`, `server_error`(503 외 5xx와 타임아웃), `other_fail`(그 외).
+
+**결과 폴더 생성 (처음 한 번)**: `loadtest/results/` 는 `.gitignore` 대상이라 처음에는 없고, k6가 만들어 주지 않으므로 먼저 만든다.
+
+```powershell
+New-Item -ItemType Directory -Force loadtest\results
+```
+
+**실행 예시**
+
+```powershell
+# 조회 (A)
+$env:RESULT_NAME = "read-baseline"
+k6 run loadtest/k6/read.js
+
+# 예매 집중 (B): 먼저 03_reset.sql, 실행 후 04_verify.sql
+$env:LOADTEST_PASSWORD = "<부하용 회원 비밀번호>"
+$env:RESULT_NAME = "reserve-hot-50vu"
+k6 run -e VUS=50 -e DURATION=30s loadtest/k6/reserve-hot.js
+```
+
+`$env:` 값은 해당 PowerShell 창에만 적용된다. 비밀번호는 문서·코드·결과 파일에 남기지 않는다.
 
 ## 알려 둘 점 (다음 단계에서 반영)
 
