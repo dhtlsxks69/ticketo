@@ -1,4 +1,4 @@
-// 시나리오 B: 한 공연(loadtest-hot)에 예매가 몰리는 경합. quantity=1 고정.
+// 시나리오 B: 한 공연(기본 loadtest-hot, env TICKET_TITLE 로 변경)에 예매가 몰리는 경합. quantity=1 고정.
 // 실행 전 03_reset.sql, 실행 후 04_verify.sql 을 돌린다.
 import http from 'k6/http';
 import { BASE_URL } from './lib/config.js';
@@ -7,6 +7,7 @@ import { reserveExpected, countReserve, summaryOutput } from './lib/metrics.js';
 
 const VUS = parseInt(__ENV.VUS || '50', 10);
 const DURATION = __ENV.DURATION || '30s';
+const TICKET_TITLE = __ENV.TICKET_TITLE || 'loadtest-hot';
 
 export const options = {
   setupTimeout: '300s', // 회원 수 × BCrypt 로그인
@@ -28,10 +29,10 @@ export function setup() {
 
   const res = http.get(`${BASE_URL}/api/tickets`);
   if (res.status !== 200) throw new Error(`공연 목록 조회 실패 status=${res.status}`);
-  const hot = res.json().find((t) => t.title === 'loadtest-hot');
-  if (!hot) throw new Error('title 이 loadtest-hot 인 공연이 없습니다. 02_seed_tickets.sql 을 실행하세요.');
+  const target = res.json().find((t) => t.title === TICKET_TITLE);
+  if (!target) throw new Error(`title 이 ${TICKET_TITLE} 인 공연이 없습니다. 02_seed_tickets.sql 을 실행하세요.`);
 
-  return { tokens, ticketId: hot.id };
+  return { tokens, ticketId: target.id };
 }
 
 export default function (data) {
