@@ -134,9 +134,10 @@ IntelliJ를 쓰지 않거나 `mysql` 클라이언트가 설치돼 있지 않을 
 | `k6/lib/auth.js` | `setup()`에서 회원 전원이 한 번씩만 로그인해 토큰 배열 반환 |
 | `k6/lib/metrics.js` | 커스텀 카운터와 결과 요약 저장 |
 | `k6/read.js` | 시나리오 A: 목록/상세 조회 혼합, VU 단계 상승. 로그인 불필요 |
-| `k6/reserve-hot.js` | 시나리오 B: `loadtest-hot` 에 `quantity=1` 예매 집중 |
+| `k6/reserve-hot.js` | 시나리오 B: 대상 공연(기본 `loadtest-hot`, `TICKET_TITLE` 로 변경)에 `quantity=1` 예매 집중 |
+| `k6/reserve-spread.js` | 시나리오 C: `loadtest-spread-*` 중 무작위 공연에 `quantity=1` 예매 분산 |
 
-환경변수: `LOADTEST_PASSWORD`(로그인 시나리오 필수, 기본값 없음), `RESULT_NAME`(결과 파일명, 없으면 날짜시간), `BASE_URL`, `MEMBER_COUNT`, `VUS`/`DURATION`(reserve-hot, 기본 50 / 30s), `LIST_RATIO`(read의 목록 비율, 기본 0.2).
+환경변수: `LOADTEST_PASSWORD`(로그인 시나리오 필수, 기본값 없음), `RESULT_NAME`(결과 파일명, 없으면 날짜시간), `BASE_URL`, `MEMBER_COUNT`, `VUS`/`DURATION`(reserve-hot, reserve-spread, 기본 50 / 30s), `TICKET_TITLE`(reserve-hot 대상 공연 title, 기본 `loadtest-hot`), `LIST_RATIO`(read의 목록 비율, 기본 0.2).
 
 커스텀 카운터: `reserve_success`(201), `reserve_sold_out`(409, 정상 응답으로 취급하며 `http_req_failed`에서 제외), `server_error_503`, `server_error`(503 외 5xx와 타임아웃), `other_fail`(그 외).
 
@@ -157,6 +158,22 @@ k6 run loadtest/k6/read.js
 $env:LOADTEST_PASSWORD = "<부하용 회원 비밀번호>"
 $env:RESULT_NAME = "reserve-hot-50vu"
 k6 run -e VUS=50 -e DURATION=30s loadtest/k6/reserve-hot.js
+
+# 예매 집중 (B), 성공 경로 경합: 먼저 03_reset.sql, 실행 후 04_verify.sql
+$env:LOADTEST_PASSWORD = "<부하용 회원 비밀번호>"
+$env:RESULT_NAME = "reserve-plenty-50vu"
+k6 run -e VUS=50 -e DURATION=30s -e TICKET_TITLE=loadtest-plenty loadtest/k6/reserve-hot.js
+```
+
+`TICKET_TITLE=loadtest-plenty` 로 성공 경로 경합을 측정한다. 이 경우 매진이 없어 `reserve_success` 수가 곧 처리량이다.
+
+**예매 분산 (C)**: 공연 200개 분산, 락 경합 비교용. 매 요청마다 `loadtest-spread-*` 공연 중 하나를 무작위로 골라 예매하므로 한 행에 몰리는 락 경합이 적다. `loadtest-hot`/`loadtest-plenty` 결과와 비교해 락 경합의 영향을 본다.
+
+```powershell
+# 먼저 03_reset.sql, 실행 후 04_verify.sql
+$env:LOADTEST_PASSWORD = "<부하용 회원 비밀번호>"
+$env:RESULT_NAME = "reserve-spread-50vu"
+k6 run -e VUS=50 -e DURATION=30s loadtest/k6/reserve-spread.js
 ```
 
 `$env:` 값은 해당 PowerShell 창에만 적용된다. 비밀번호는 문서·코드·결과 파일에 남기지 않는다.
