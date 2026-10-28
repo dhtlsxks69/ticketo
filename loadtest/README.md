@@ -178,8 +178,25 @@ k6 run -e VUS=50 -e DURATION=30s loadtest/k6/reserve-spread.js
 
 `$env:` 값은 해당 PowerShell 창에만 적용된다. 비밀번호는 문서·코드·결과 파일에 남기지 않는다.
 
+## 락 전략 전환
+
+예매 컨트롤러는 설정 `ticketo.reservation.lock-strategy` 로 락 전략을 고른다. 환경변수 `TICKETO_RESERVATION_LOCK_STRATEGY` 로 바꾼다.
+
+| 값 | 동작 |
+|---|---|
+| `conditional-update` (기본) | 조건부 UPDATE (`reserve`) |
+| `pessimistic` | 비관적 락 `SELECT ... FOR UPDATE` (`reserveWithPessimisticLock`) |
+
+그 외 값은 기동 시 `IllegalArgumentException` 으로 실패한다. 기동 로그에 `예매 락 전략: <값>` 이 한 줄 남으니 실행 전에 확인한다.
+
+```powershell
+# 앱을 띄우는 PowerShell 창에서 (IntelliJ는 Ticketo-loadtest 설정의 Environment variables 에 추가)
+$env:TICKETO_RESERVATION_LOCK_STRATEGY = "pessimistic"
+```
+
+전략을 바꿀 때는 앱을 재시작하고, 매번 `03_reset.sql` → k6 → `04_verify.sql` 순서를 지킨다.
+
 ## 알려 둘 점 (다음 단계에서 반영)
 
 - 로그인은 BCrypt 검증이라 CPU를 많이 쓴다. k6에서는 VU마다 로그인을 반복하지 말고 시작 시 한 번만 로그인해 토큰을 재사용한다. (액세스 토큰 유효 시간 `expiresIn` 은 로그인 응답에 있음. 기본 3600초)
-- 예매 컨트롤러는 현재 조건부 UPDATE 버전(`reserve`)을 호출한다. 비관적 락 버전(`reserveWithPessimisticLock`) 비교는 컨트롤러 변경이 필요하며 다음 단계에서 다룬다.
 - 앱과 k6, MySQL이 같은 PC에서 돌면 서로 자원을 나눠 쓰므로 절대 수치보다 방식 간 상대 비교로 해석한다.
