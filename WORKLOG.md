@@ -3,6 +3,68 @@
 그날 실제로 한 일을 날짜별로 기록합니다. 앞으로의 일정은 `ticketo-plan.md`를 참고합니다.
 작업 종료 시 해당 날짜에 한 일과 커밋을 추가합니다.
 
+## 10/28 (수)
+
+- 락 전략 비교 부하 테스트 (브랜치 `feature/loadtest`, 전략 전환 설정 `80a65cb`)
+  - 조건: 풀 30(환경변수로만 적용, 커밋 설정은 기본 10), 50 VU, 30초, 같은 세션에서 전략별 3회씩. 전환은 `ticketo.reservation.lock-strategy`(기본 `conditional-update`). 모든 회차 5xx 0, 정합성 검증 위반 0
+  - plenty 조건부 UPDATE: 16,633 / 16,730 / 16,866건(평균 약 16,740), avg 88.9~90.3ms, p95 98.5~101.5ms
+  - plenty 비관적 락: 14,916 / 14,574 / 14,926건(평균 약 14,800), avg 100.3~102.7ms, p95 110.9~119.9ms → 비관적이 약 11.6% 낮음
+  - spread 조건부 UPDATE: 132,088 / 133,336 / 126,970건(평균 약 130,800), avg 10.8~11.3ms, p95 17.6~19.2ms
+  - spread 비관적 락: 131,020 / 129,372 / 129,439건(평균 약 129,900), avg 11.1~11.2ms, p95 18.2~18.8ms → 약 -0.7%, 오차 범위
+  - 해석: 한 공연 집중에서는 비관적 락이 약 12% 낮음 → `SELECT ... FOR UPDATE` 후 UPDATE·INSERT·커밋까지 락을 쥐는 시간이 길어진 탓으로 추정(InnoDB 락 대기를 직접 확인하지는 않음). 분산 구간은 같은 조건 편차(약 ±4%) 이내라 오차. 두 방식 모두 정합성 유지. 코드 복잡도는 조건부가 쿼리 1개로 단순
+  - 실수: spread로 의도하고 잘못 실행한 3회가 `reserve-hot.js`(`loadtest-hot` 500석)로 돌아감. 성공 500건, 매진 응답 176,601~183,661건, 정합성 통과였으나 비교에는 쓰지 않고 다시 측정
+  - 결과는 루트 `README.md`에 "락 전략 비교 (부하 테스트)"로 정리. 기존 동시성 섹션의 "속도 차이는 오차 범위" 문장(스레드 100개 1회성 비교)은 유지하고, 50 VU·30초 비교에서 한 공연 집중 시 차이가 나타났다는 점을 덧붙임
+- 알게 된 점
+  - 스크립트 파일명을 잘못 적어도 실행은 되므로, 결과 요약 첫 줄(`scenarios`)의 이름으로 어느 스크립트가 돌았는지 확인
+
+## 10/23 (금)
+
+- 부하 테스트 시나리오 보강 (브랜치 `feature/loadtest`, `reserve-hot.js` `96f669c`, `reserve-spread.js` `6a29ef3`)
+  - `reserve-hot.js`: 대상 공연 title을 env `TICKET_TITLE`로 받음(기본 `loadtest-hot`). 목록에 없으면 setup()에서 에러. `loadtest-plenty`로 지정하면 매진 없는 성공 경로 경합 측정
+  - `reserve-spread.js` 신규: `loadtest-spread-*` 공연 id를 모두 모아 iteration마다 무작위 공연에 예매. 지표·요약은 `metrics.js` 재사용
+  - `loadtest/README.md`에 실행 예시와 설명 추가
+- 부하 테스트 측정 (단일 Windows PC, k6·앱·MySQL 8.0.39 동일 기기, 조건부 UPDATE, 50 VU × 30초, 전용 DB). 모든 실행에서 5xx 0, 정합성 검증 위반 0
+  - hot 500석: 성공 500(2회 모두), 매진 응답 167,071 / 194,698건, p95 16.4ms / 12.2ms
+  - plenty 1,000만 석(한 공연 집중): 17,002 / 17,044 / 16,755건(평균 약 16,900, 약 560건/초), avg 약 88ms, p95 96.8~101.5ms
+  - spread 200개 분산, 풀 10(6회): 78,339 / 80,221 / 80,820 / 74,073 / 78,686 / 80,758건(평균 약 78,800, 약 2,630건/초, 편차 약 ±4%, 최대-최소 약 8%), avg 18.4~20.1ms, p95 27.9~31.9ms
+  - spread 풀 30(3회): 131,503 / 133,765 / 132,988건(평균 약 132,800, 약 4,430건/초 환산), avg 10.8~11.0ms, p95 17.4~18.2ms
+  - plenty 풀 30(2회): 16,733 / 17,069건(평균 약 16,900), avg 약 88~90ms, p95 98.6~106.4ms (풀 10 plenty는 3회 측정, 위 수치)
+  - 풀 30은 환경변수 `SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=30`으로 실험. 커밋된 설정은 기본값 10 그대로, 적용은 `information_schema.processlist` 연결 수 30으로 확인. 풀 30 모두 5xx 0, 정합성 검증 위반 0
+  - 정정: 처음에 "풀 30"으로 측정한 3회는 풀 크기 환경변수가 적용되지 않아 실제로는 풀 10 상태였음(DB 연결 수 10으로 확인). 그래서 풀 10 결과 3회와 합쳐 6회로 정리
+  - 해석: 한 공연 집중은 분산 대비 처리량 약 4.7배 낮고 지연 약 4.7배 높음 → 같은 행 락 대기가 병목. spread에서 풀 10→30은 처리량 약 1.7배, 평균 지연 약 18.5ms→10.9ms → 연결 수가 병목이었음. plenty에서는 풀 크기와 무관하게 처리량·지연이 같음 → 한 공연 행의 락 대기가 병목이며 풀 튜닝은 락 경합이 없는 구간에서만 효과가 있음. 풀 30에서 작업 관리자 기준 mysqld CPU가 가장 높았음(수치 미기록). 이후 한계 원인은 DB 처리/단일 PC 자원으로 추정, 확인하지 않음. hot의 req/s는 매진 응답 처리량이라 예매 성능이 아님
+  - 한계: 단일 PC·로컬 DB라 상대 비교용, 반복 횟수는 hot 2회·plenty 풀 10 3회/풀 30 2회·spread 풀 10 6회/풀 30 3회, 같은 조건에서도 약 8% 차이(편차 약 ±4%)가 나므로 그보다 작은 차이는 오차로 봄, 풀 크기 외 다른 조건(MySQL 설정 등)은 고정·검증하지 않았고 풀 크기를 키우라는 일반 결론이 아닌 이 환경의 관측
+  - 결과는 루트 `README.md`에 "부하 테스트 결과" 섹션으로 정리
+- 알게 된 점
+  - k6는 결과 폴더(`loadtest/results/`)를 만들지 않으므로 먼저 만들어야 함
+  - 앱 기동 로그에 접속 DB 이름이 나오지 않음 → `/api/tickets`에서 `loadtest-` 공연 개수를 보거나 `processlist`로 어느 DB에 붙었는지 확인
+  - 시드 회원 비밀번호가 맞지 않아 로그인이 실패하면 `99_cleanup.sql`로 정리한 뒤 시드 회원을 다시 가입
+  - 풀 크기 환경변수를 지정해도 적용 여부를 반드시 확인해야 함(`information_schema.processlist`의 연결 수)
+  - 환경변수 이름 앞에 탭/공백이 들어가 변수가 조용히 무시된 사례가 있었음. 입력은 Name/Value 표로 하고, 적용 여부는 processlist 연결 수로 확인
+
+## 10/15 (목)
+
+- 부하 테스트 1단계: 환경 준비 파일 작성 (브랜치 `feature/loadtest`, SQL/런북 `9c185ce`, `.gitignore` `a1cf02c`)
+  - 추가: `loadtest/README.md`(런북), `loadtest/sql/01_seed_members.sql`, `02_seed_tickets.sql`, `03_reset.sql`, `04_verify.sql`, `99_cleanup.sql`. `.gitignore` 끝에 `loadtest/results/` 추가(UTF-8, 기존 내용 유지)
+  - 방식: 전용 DB `ticketo_loadtest`에서 `TicketoApplication` 복제 설정(`Ticketo-loadtest`, `DB_NAME=ticketo_loadtest`)으로 앱을 한 번 띄워 `schema.sql`이 테이블을 만들게 함. 개발용 설정은 수정하지 않음. SQL은 IntelliJ Database 도구/MySQL 클라이언트에서 실행(PowerShell `<` 리다이렉션은 런북에 쓰지 않음)
+  - 회원: 회원가입 API로 시드 회원 1명(`loadtest-seed@example.com`)을 만든 뒤 `01_seed_members.sql`이 그 BCrypt 해시를 복제해 `loadtest-00001@example.com ~` 생성. 모든 시나리오는 `quantity=1` 고정
+  - 모든 SQL에 접속 DB가 `ticketo_loadtest`가 아니면 오류로 중단하는 안전장치 포함
+  - 작성 시점에는 앱 기동과 SQL 실행을 하지 않았고, 실행 확인(재귀 CTE INSERT, 가드 쿼리 포함)은 아래 "부하 테스트 1단계 실행 확인" 항목에 기록. k6 스크립트와 컨트롤러 변경은 다음 단계
+- 부하 테스트 1단계 수정 (`9c185ce`)
+  - 모든 `loadtest/sql/*.sql`의 첫 실행 문장을 `USE ticketo_loadtest;`로 하고 DB 확인 쿼리는 그 뒤에 유지
+  - 회원 기본 100명으로 변경, 분산용 공연 `loadtest-spread-001~200`(각 100,000매, 재귀 CTE + `cte_max_recursion_depth` 100000 설정)으로 확대
+  - `05_seed_fillers.sql` 추가(`loadtest-filler-NNNNN`, 개수는 `@filler_count`, 각 100매). title에 인덱스가 없어 NOT EXISTS 대신 기존 개수 이후 번호만 추가하는 방식. `04_verify.sql`은 filler를 제외하고 filler 예매·수량 변동이 없는지 확인, `99_cleanup.sql`은 filler도 삭제
+  - 삭제/갱신 범위 점검: `03_reset.sql`, `99_cleanup.sql`의 모든 DELETE/UPDATE는 이미 `loadtest-` 접두어 조건(회원 이메일 `loadtest-%@example.com`, 공연 제목 `loadtest-%`)이 있었음. reset의 UPDATE에는 수량이 달라진 행만 갱신하도록 조건 추가
+  - README에 Workbench/DBeaver/`mysql -e "source ..."` 방법과 `--default-character-set=utf8mb4` 옵션 추가
+  - 수정 시점에는 앱 기동과 SQL 실행을 하지 않았고, 실행 확인은 아래 "부하 테스트 1단계 실행 확인" 항목에 기록
+- `04_verify.sql` 출력 간소화 (`9c185ce`): 공연별 전체 목록 대신 불일치/초과 판매 공연만 출력(0행이면 통과), 파일 끝에 전체 요약 한 줄(공연 수, 불일치·초과 판매 공연 수, total/remaining/reserved 합계) 추가. filler·상태별·quantity 검증 쿼리는 그대로. 수정 시점에는 SQL을 실행하지 않았고, 실행 확인은 아래 "부하 테스트 1단계 실행 확인" 항목에 기록
+
+- 부하 테스트 1단계 실행 확인
+  - 전용 DB `ticketo_loadtest` 생성, `Ticketo-loadtest` 실행 설정으로 앱을 띄워 테이블 생성, 회원가입 API로 시드 회원 가입
+  - 수정 전 버전 SQL로 1차 실행(회원 1,001명, 공연 7개)한 뒤 `99_cleanup.sql`로 정리. 시드 회원도 함께 삭제되어 시드 회원을 다시 가입함
+  - 수정 버전 `01_seed_members.sql`, `02_seed_tickets.sql` 실행 결과: 회원 101명, 공연 202개, 예매 0건
+  - `04_verify.sql` 통과. 개발 DB에는 `loadtest-` 데이터 0건 확인
+  - 알게 된 점: PowerShell에서는 `mysql < 파일` 리다이렉션을 쓸 수 없어 `mysql -e "source ..."` 사용, `mysql` 전체 경로 지정 필요, `--default-character-set=utf8mb4` 옵션 필요
+
 ## 10/14 (수)
 
 - 인증 동작 자동 테스트 추가: `src/test/java/com/ticketo/com/AuthSecurityTest.java` (`07e396b`)
@@ -19,7 +81,7 @@
   - 사용처 확인: `BaseTimeEntity`·`JpaAuditingConfig`는 서로의 Javadoc에서만 참조, `jakarta.persistence` import는 `BaseTimeEntity` 한 곳, `@Entity`·Spring Data Repository 사용 없음
   - `mybatis-spring-boot-starter`가 `spring-boot-starter-jdbc`(HikariCP, spring-jdbc, spring-tx)를 포함해 트랜잭션 관리자는 그대로 유지됨을 의존성 트리로 확인
   - 삭제: `BaseTimeEntity.java`, `JpaAuditingConfig.java`, `build.gradle.kts`의 `spring-boot-starter-data-jpa`와 주석, `application.yml`의 `spring.jpa` 섹션과 `org.hibernate` 로깅 설정
-  - `compileJava`, `compileTestJava` 통과. 앱 기동과 테스트 실행은 하지 않음 (기동 확인은 다음 작업 때)
+  - `compileJava`, `compileTestJava` 통과. IntelliJ에서 앱 기동, 로그인·예매·취소, ReservationConcurrencyTest 확인 완료
   - 참고: `TicketoApplication.java` 주석에 "JPA" 언급이 남아 있어 별도로 정리. 13행 "Web, JPA, MySQL 등"을 "Web, MyBatis, MySQL 등"으로, 27행 "DataSource/JPA 초기화"를 "DataSource/MyBatis 초기화"로 수정 (주석만 변경, `compileJava` 통과)
 - README 점검 및 수정 (코드는 수정하지 않음)
   - 패키지 구조에 `com/GlobalExceptionHandler`, `com/ErrorResponse`, `member/vo/MemberLoginResponseVO` 추가 (실제 파일 위치 `git ls-files`로 확인)
